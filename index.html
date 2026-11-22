@@ -2,106 +2,580 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0d1117">
-<title>BLE-Test XCTracer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>Flug-Anzeige XCTracer</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23000'/%3E%3Cpath d='M8 40 Q32 8 56 40' stroke='%2334e07a' stroke-width='6' fill='none'/%3E%3Cpath d='M32 22v28' stroke='%23fff' stroke-width='4'/%3E%3C/svg%3E">
 <style>
   :root {
-    --bg: #0d1117; --panel: #161b22; --line: #30363d; --text: #e6edf3; --dim: #8b949e;
-    --ok: #3fb950; --warn: #d29922; --bad: #f85149; --info: #58a6ff;
+    --bg: #000; --panel: #12161c; --panel2: #1b2129; --line: #3a424d; --text: #f2f5f8; --dim: #a7b0ba;
+    --ok: #34e07a; --warn: #ffb020; --bad: #ff5a5a; --info: #5ab0ff;
+    --pos: #34e07a; --neg: #ff6b6b;
+    --sbar-h: 38px; --tabs-h: 64px;
   }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--bg); color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 18px; }
-  body { padding: 0 12px calc(24px + env(safe-area-inset-bottom)); }
-  h2 { font-size: 1.05rem; margin: 22px 0 8px; color: var(--dim); text-transform: uppercase; letter-spacing: .04em; }
-  .api { margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; font-weight: 600; }
-  .api.ok { background: #12301b; color: var(--ok); }
-  .api.bad { background: #3a1416; color: var(--bad); }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  /* Kein Überscrollen / Pull-to-Refresh: Seite selbst ist fixiert, nur Innenbereiche scrollen. */
+  html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 18px; }
+  body { position: fixed; inset: 0; display: flex; flex-direction: column; touch-action: manipulation;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-text-size-adjust: 100%; }
+  h2 { font-size: 1rem; margin: 22px 0 8px; color: var(--dim); text-transform: uppercase; letter-spacing: .04em; }
+  h2:first-child { margin-top: 4px; }
 
-  /* Statusleiste: immer sichtbar */
-  #status { position: sticky; top: 0; z-index: 10; background: var(--bg);
-    padding: calc(8px + env(safe-area-inset-top)) 0 8px; border-bottom: 1px solid var(--line); }
+  /* ---------- Statusleiste oben ---------- */
+  #sbar { flex: none; height: calc(var(--sbar-h) + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 10px 0;
+    display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 17px; background: #111;
+    border-bottom: 2px solid var(--line); white-space: nowrap; overflow: hidden; font-variant-numeric: tabular-nums; }
+  #sbar .dot { font-size: 20px; }
+  #sbar.st-ok { background: #0b1f12; border-color: #1f6b3a; } #sbar.st-ok .dot { color: var(--ok); }
+  #sbar.st-stale { background: #3a2a00; border-color: var(--warn); } #sbar.st-stale .dot { color: var(--warn); }
+  #sbar.st-bad { background: #3a0d0d; border-color: var(--bad); } #sbar.st-bad .dot { color: var(--bad); }
+  #sbar.st-busy .dot { color: var(--warn); }
+  #sbar .grow { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+  #sbRec { color: var(--bad); } #sbRec.warn { color: var(--warn); }
+
+  #errbar { position: absolute; left: 6px; right: 6px; top: calc(var(--sbar-h) + env(safe-area-inset-top) + 4px); z-index: 50;
+    display: none; gap: 8px; align-items: flex-start; background: #5a0f0f; border: 2px solid var(--bad); border-radius: 10px;
+    padding: 8px 10px; font-size: 15px; font-weight: 600; -webkit-user-select: text; user-select: text; }
+  #errbar.show { display: flex; }
+  #errText { flex: 1; word-break: break-word; max-height: 4.5em; overflow: hidden; }
+  #errClose { width: 48px; height: 40px; margin: 0; padding: 0; flex: none; background: #000; color: #fff; border: 1px solid var(--bad); }
+
+  /* ---------- Seiten ---------- */
+  main { flex: 1; min-height: 0; position: relative; }
+  .page { position: absolute; inset: 0; display: none; }
+  .page.active { display: block; }
+  .page.inst { padding: 4px; touch-action: none; overflow: hidden; }
+  .page.scroll { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 10px 12px 24px; }
+  .page.col.active { display: flex; flex-direction: column; padding: 8px 10px; }
+
+  /* ---------- Reiter unten ---------- */
+  #tabs { flex: none; display: flex; height: calc(var(--tabs-h) + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom); background: #111; border-top: 2px solid var(--line); }
+  #tabs button { flex: 1; margin: 0; padding: 2px 1px; border-radius: 0; background: transparent; color: var(--dim);
+    font-size: 14px; font-weight: 800; line-height: 1.1; border-right: 1px solid #222; width: auto; hyphens: manual; }
+  #tabs button.on { color: #000; background: var(--text); }
+
+  /* ---------- Instrument-Kästen ---------- */
+  .igrid { display: grid; gap: 4px; height: 100%; }
+  .ibox { position: relative; container-type: size; background: #000; border: 2px solid #2c333c; border-radius: 10px;
+    display: flex; flex-direction: column; padding: 4px 8px 4px; min-width: 0; min-height: 0; overflow: hidden; }
+  .ibox .lbl { display: flex; align-items: center; gap: 6px; font-size: 16px; font-weight: 800; color: #d5dbe2; line-height: 1.15; }
+  .ibox .lbl { align-items: flex-start; }
+  .ibox .lbl .name { flex: 1; min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .ibox .lbl .unit { color: var(--dim); font-weight: 700; }
+  .ibox .flag { display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2;
+    background: var(--warn); color: #000; font-size: 17px; font-weight: 900; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
+  .ibox .val { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .ibox .num { display: inline-block; white-space: nowrap; font-weight: 800; line-height: 1; letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums; font-size: 64px; font-size: min(34cqw, 60cqh); }
+  .ibox.long .num { font-size: 40px; font-size: min(19cqw, 42cqh); }
+  .ibox.text .num { font-size: 30px; font-size: min(15cqw, 32cqh); }
+  .ibox .sub { font-size: 15px; font-weight: 700; color: var(--dim); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 1.15em; }
+  .ibox.t-pos .num { color: var(--pos); } .ibox.t-neg .num { color: var(--neg); }
+  .ibox.t-ok .num { color: var(--ok); } .ibox.t-warn .num { color: var(--warn); } .ibox.t-bad .num { color: var(--bad); }
+  .ibox.stale { border-color: var(--warn); border-style: dashed; }
+  .ibox.stale .num, .ibox.stale .sub, .ibox.stale .lbl .unit { opacity: .25; }
+  .ibox.stale .num { color: var(--text) !important; }
+  .ibox.stale .flag { display: inline-block; }
+
+  /* ---------- Allgemeine Bedienelemente ---------- */
+  button { font-size: 1.1rem; font-weight: 800; border: 0; border-radius: 12px; padding: 14px; min-height: 56px; width: 100%;
+    background: var(--info); color: #000; margin-top: 8px; touch-action: manipulation; }
+  button.secondary { background: var(--panel2); color: var(--text); border: 1px solid var(--line); }
+  button.danger { background: #5a0f0f; color: #fff; border: 1px solid var(--bad); }
+  button.big { min-height: 80px; font-size: 1.4rem; }
+  button:disabled { opacity: .4; }
+  .row { display: flex; gap: 8px; } .row > * { flex: 1; }
+  textarea { width: 100%; min-height: 110px; font: 16px ui-monospace, Menlo, monospace; color: var(--text);
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px; -webkit-user-select: text; user-select: text; }
+  input, select { font-size: 18px; color: var(--text); background: var(--panel2); border: 1px solid var(--line); border-radius: 10px;
+    padding: 10px; min-height: 50px; -webkit-user-select: text; user-select: text; }
+  select { width: 100%; }
+  label.chk { display: flex; align-items: center; gap: 10px; font-size: 1rem; color: var(--text); margin-top: 10px; min-height: 44px; }
+  label.chk input { width: 28px; height: 28px; min-height: 0; }
+  .field { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+  .field > span { flex: 1; } .field input { width: 110px; text-align: right; }
+  .hint { font-size: .85rem; color: var(--dim); }
+  .notice { background: #2a2200; border: 1px solid var(--warn); color: #ffe2a0; border-radius: 10px; padding: 10px 12px; font-size: .95rem; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 1rem; }
+  .kv b { text-align: right; font-variant-numeric: tabular-nums; }
+  .ok-t { color: var(--ok); } .warn-t { color: var(--warn); } .bad-t { color: var(--bad); }
+
+  /* ---------- Verbinden (bisheriger Teil) ---------- */
+  .api { margin: 0 0 8px; padding: 10px 12px; border-radius: 10px; font-weight: 700; }
+  .api.ok { background: #0b2614; color: var(--ok); }
+  .api.bad { background: #3a1416; color: var(--bad); }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .cell { background: var(--panel); border-radius: 10px; padding: 6px 10px; }
-  .cell .k { font-size: .72rem; color: var(--dim); }
-  .cell .v { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; word-break: break-all; }
+  .cell .k { font-size: .75rem; color: var(--dim); }
+  .cell .v { font-size: 1.3rem; font-weight: 800; font-variant-numeric: tabular-nums; word-break: break-all; }
   .cell.wide { grid-column: 1 / -1; }
   #conn.s-none { color: var(--dim); } #conn.s-connecting { color: var(--warn); }
   #conn.s-connected { color: var(--ok); } #conn.s-disconnected { color: var(--bad); }
   .red { color: var(--bad) !important; }
-
-  button { font-size: 1.1rem; font-weight: 700; border: 0; border-radius: 12px; padding: 14px; width: 100%;
-    background: var(--info); color: #0d1117; margin-top: 8px; }
-  button.secondary { background: var(--panel); color: var(--text); border: 1px solid var(--line); }
-  button:disabled { opacity: .4; }
-  .row { display: flex; gap: 8px; } .row > * { flex: 1; }
-  textarea { width: 100%; min-height: 110px; font: 15px ui-monospace, Menlo, monospace; color: var(--text);
-    background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px; }
-  label.chk { display: flex; align-items: center; gap: 8px; font-size: .9rem; color: var(--dim); margin-top: 6px; }
-  .hint { font-size: .8rem; color: var(--dim); }
-
   .box { background: var(--panel); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
-  .svc { font: 13px ui-monospace, Menlo, monospace; }
+  .svc { font: 13px ui-monospace, Menlo, monospace; -webkit-user-select: text; user-select: text; }
   .svc .uuid { color: var(--info); }
   .char { margin: 6px 0 6px 10px; padding-left: 8px; border-left: 2px solid var(--line); }
   .props { color: var(--warn); }
   .nraw { font: 13px ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-all; margin-top: 4px; color: var(--text); }
   .ncount { color: var(--dim); font-size: .8rem; }
 
-  #raw { height: 340px; overflow-y: auto; background: #010409; border: 1px solid var(--line); border-radius: 10px;
-    padding: 6px 8px; font: 13px/1.35 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-all; }
+  /* ---------- Rohdaten ---------- */
+  #rawStats { font-size: .9rem; color: var(--dim); margin-bottom: 6px; font-variant-numeric: tabular-nums; }
+  #raw { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+    background: #05080c; border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px;
+    font: 13px/1.35 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-all; -webkit-user-select: text; user-select: text; }
   #raw .ts { color: var(--dim); } #raw .hex { color: var(--warn); } #raw .sys { color: var(--info); }
-  #raw .err { color: var(--bad); }
+  #raw .err { color: var(--bad); } #raw .bad { color: #ff9a9a; text-decoration: line-through; }
 
-  .parsed table { width: 100%; border-collapse: collapse; font-size: 1rem; }
-  .parsed td { padding: 4px 2px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  .parsed td:last-child { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .parsed .note { font-size: .75rem; color: var(--dim); font-weight: 400; }
-  .cs-ok { color: var(--ok); } .cs-bad { color: var(--bad); }
+  /* ---------- Aufzeichnung ---------- */
+  #recBtn.on { background: var(--bad); color: #fff; }
+  .sess { border-top: 1px solid var(--line); padding: 10px 0; }
+  .sess:first-child { border-top: 0; }
+  .sess .t { font-weight: 800; } .sess .m { font-size: .9rem; color: var(--dim); }
+  .sess .row button { min-height: 52px; font-size: 1rem; }
+  #exportText { min-height: 200px; font-size: 12px; }
+
+  /* ---------- Einstellungen ---------- */
+  .boxsel { display: grid; gap: 6px; margin-top: 6px; }
+  .boxsel label { font-size: .85rem; color: var(--dim); display: block; margin-bottom: 2px; }
 </style>
 </head>
 <body>
 
-<div id="status">
-  <div id="apiInfo" class="api">Prüfe Bluetooth-Schnittstelle …</div>
-  <div class="grid" style="margin-top:8px">
-    <div class="cell"><div class="k">Verbindung</div><div class="v s-none" id="conn">nicht verbunden</div></div>
-    <div class="cell"><div class="k">Gerät</div><div class="v" id="devName">–</div></div>
-    <div class="cell"><div class="k">Seit letzter Nachricht</div><div class="v" id="since">–</div></div>
-    <div class="cell"><div class="k">Nachrichten · pro s</div><div class="v" id="msgs">0 · 0.0</div></div>
-    <div class="cell wide"><div class="k">Verbindungsabbrüche · letzter Abbruch</div><div class="v" id="drops">0 · –</div></div>
-  </div>
-</div>
+<header id="sbar" class="st-bad">
+  <span class="dot">●</span>
+  <span id="sbText" class="grow">nicht verbunden</span>
+  <span id="sbAge"></span>
+  <span id="sbRate"></span>
+  <span id="sbRec"></span>
+</header>
+<div id="errbar" role="alert"><span id="errText"></span><button id="errClose" aria-label="Fehlermeldung schliessen">✕</button></div>
 
-<div class="row">
-  <button id="btnConnect">Verbinden</button>
-  <button id="btnDisconnect" class="secondary" disabled>Trennen</button>
-</div>
-<button id="btnTestNoSvc" class="secondary">Test ohne Service-Liste</button>
-<label class="chk"><input type="checkbox" id="autoReconnect" checked> Nach Abbruch automatisch neu verbinden</label>
+<main>
+  <section class="page inst" id="page-flug"><div class="igrid"></div></section>
+  <section class="page inst" id="page-info"><div class="igrid"></div></section>
 
-<h2>Geparste Werte</h2>
-<div id="parsedLK" class="box parsed"><span class="hint">Noch kein $LK8EX1 empfangen.</span></div>
-<div id="parsedLX" class="box parsed"><span class="hint">Noch kein $LXWP0 empfangen.</span></div>
+  <section class="page scroll" id="page-verbinden">
+    <div id="apiInfo" class="api">Prüfe Bluetooth-Schnittstelle …</div>
+    <div class="grid">
+      <div class="cell"><div class="k">Verbindung</div><div class="v s-none" id="conn">nicht verbunden</div></div>
+      <div class="cell"><div class="k">Gerät</div><div class="v" id="devName">–</div></div>
+      <div class="cell"><div class="k">Seit letzter Nachricht</div><div class="v" id="since">–</div></div>
+      <div class="cell"><div class="k">Nachrichten · pro s</div><div class="v" id="msgs">0 · 0.0</div></div>
+      <div class="cell wide"><div class="k">Verbindungsabbrüche · letzter Abbruch</div><div class="v" id="drops">0 · –</div></div>
+    </div>
+    <div class="row">
+      <button id="btnConnect">Verbinden</button>
+      <button id="btnDisconnect" class="secondary" disabled>Trennen</button>
+    </div>
+    <button id="btnTestNoSvc" class="secondary">Test ohne Service-Liste</button>
+    <label class="chk"><input type="checkbox" id="autoReconnect" checked> Nach Abbruch automatisch neu verbinden</label>
 
-<h2>Rohdaten (letzte 200 Zeilen)</h2>
-<div class="row" style="margin-bottom:6px">
-  <button class="secondary" id="btnPause" style="margin-top:0">Pause</button>
-  <button class="secondary" id="btnClear" style="margin-top:0">Leeren</button>
-</div>
-<div id="raw"></div>
+    <h2>Services &amp; Characteristics</h2>
+    <div id="services"><span class="hint">Noch nicht verbunden.</span></div>
 
-<h2>Services &amp; Characteristics</h2>
-<div id="services"><span class="hint">Noch nicht verbunden.</span></div>
+    <h2>Service-UUIDs (optionalServices)</h2>
+    <textarea id="uuids" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
+    <div class="hint">Eine UUID pro Zeile (128-Bit-Format oder kurz als 0xFFE0 – wird automatisch ausgeschrieben). Text nach # wird ignoriert. Wird automatisch gespeichert und beim nächsten „Verbinden“ verwendet.</div>
+    <button class="secondary" id="btnResetUuids">Standardliste wiederherstellen</button>
+  </section>
 
-<h2>Service-UUIDs (optionalServices)</h2>
-<textarea id="uuids" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
-<div class="hint">Eine UUID pro Zeile (128-Bit-Format oder kurz als 0xFFE0 – wird automatisch ausgeschrieben). Text nach # wird ignoriert. Wird automatisch gespeichert und beim nächsten „Verbinden“ verwendet.</div>
-<button class="secondary" id="btnResetUuids">Standardliste wiederherstellen</button>
+  <section class="page col" id="page-roh">
+    <div id="rawStats">–</div>
+    <div class="row" style="flex:none;margin-bottom:6px">
+      <button class="secondary" id="btnPause" style="margin-top:0">Pause</button>
+      <button class="secondary" id="btnClear" style="margin-top:0">Leeren</button>
+    </div>
+    <div id="raw"></div>
+  </section>
+
+  <section class="page scroll" id="page-aufz">
+    <div id="recInterrupted"></div>
+    <button id="recBtn" class="big">Aufzeichnung starten</button>
+    <div class="card" style="margin-top:10px">
+      <div class="kv">
+        <span>Status</span><b id="recState">aus</b>
+        <span>Dauer</span><b id="recDur">–</b>
+        <span>Zeilen gespeichert</span><b id="recLines">–</b>
+        <span>GPS-Fixes gespeichert</span><b id="recFixes">–</b>
+        <span>Speicher</span><b id="recDb">–</b>
+      </div>
+    </div>
+    <div class="notice">IGC-Export: <b>nicht signiert, nicht für Wettbewerbe</b>. Die Datei hat keinen gültigen G-Record (Sicherheits-Signatur) und ist im Kopf entsprechend gekennzeichnet.</div>
+    <h2>Angaben für den IGC-Kopf (optional)</h2>
+    <div class="field"><span>Pilot</span><input id="setPilot" style="width:60%" autocomplete="off"></div>
+    <div class="field"><span>Gleitschirm</span><input id="setGlider" style="width:60%" autocomplete="off"></div>
+    <h2>Gespeicherte Aufzeichnungen</h2>
+    <label class="chk"><input type="checkbox" id="exportAsText"> Export im Textfeld anzeigen (zum Kopieren, falls Download/Teilen nicht geht)</label>
+    <div id="sessList" class="card"><span class="hint">Lade …</span></div>
+    <div id="exportBox" style="display:none">
+      <div class="hint" id="exportName"></div>
+      <textarea id="exportText" readonly></textarea>
+      <button class="secondary" id="exportClose">Textfeld schliessen</button>
+    </div>
+  </section>
+
+  <section class="page scroll" id="page-einst">
+    <div class="notice"><b>Hinweis:</b> Eigenbau ohne Zulassung. Diese Anzeige ist nur eine Ergänzung zu einem Hauptinstrument und ersetzt es nicht.</div>
+
+    <h2>Berechnung</h2>
+    <div class="field"><span>Fenster integriertes Steigen (5–120 s)</span><input id="setIntWin" type="number" inputmode="numeric" min="5" max="120" step="1"></div>
+    <div class="field"><span>Fenster Gleitzahl (5–60 s)</span><input id="setGlideWin" type="number" inputmode="numeric" min="5" max="60" step="1"></div>
+    <div class="field"><span>Gleitzahl: Strich ab Betrag über</span><input id="setGlideMax" type="number" inputmode="numeric" min="5" max="500" step="1"></div>
+
+    <h2>Seite „Flug“</h2>
+    <div id="cfg-flug"></div>
+    <h2>Seite „Info“</h2>
+    <div id="cfg-info"></div>
+    <button class="secondary" id="btnDefaults">Standard wiederherstellen</button>
+
+    <h2>Bildschirm</h2>
+    <label class="chk"><input type="checkbox" id="setWake"> Bildschirm wachhalten (Wake Lock)</label>
+    <div class="hint">Status: <b id="wakeState">–</b></div>
+
+    <h2>Sitzung</h2>
+    <button class="secondary" id="btnResetMax">Max. Höhe zurücksetzen</button>
+
+    <h2>Offline</h2>
+    <div class="card"><div class="kv">
+      <span>Offline-Cache</span><b id="swState">–</b>
+      <span>App-Version</span><b id="appVer">–</b>
+    </div></div>
+    <button class="secondary" id="btnUpdate">Neueste Version laden (trennt Bluetooth!)</button>
+  </section>
+</main>
+
+<nav id="tabs">
+  <button data-tab="flug">Flug</button>
+  <button data-tab="info">Info</button>
+  <button data-tab="verbinden">Ver&shy;binden</button>
+  <button data-tab="roh">Roh&shy;daten</button>
+  <button data-tab="aufz">Auf&shy;zeich&shy;nung</button>
+  <button data-tab="einst">Ein&shy;stel&shy;lungen</button>
+</nav>
+
+<!-- ======================================================================
+     Reine Funktionen (kein DOM, keine Uhr): Parser, Prüfsumme, Berechnungen, IGC.
+     Werden von tests/core.test.js direkt aus dieser Datei geladen und getestet.
+     ====================================================================== -->
+<script id="core">
+/*CORE-BEGIN*/
+const Core = (() => {
+  "use strict";
+  const KN_TO_MS = 1852 / 3600;          // 1 Knoten = 1852 m/h
+  const KN_TO_KMH = 1.852;
+  const MINUS = "−";                // echtes Minuszeichen (besser lesbar als "-")
+
+  /* ---------- NMEA-Prüfsumme ----------
+     XOR aller Zeichen zwischen '$' und '*', als zweistellige Hexzahl. */
+  function nmeaChecksum(body) {
+    let x = 0;
+    for (let i = 0; i < body.length; i++) x ^= body.charCodeAt(i);
+    return x.toString(16).toUpperCase().padStart(2, "0");
+  }
+
+  // Ergebnis: {ok:true, body, fields} oder {ok:false, reason, detail}
+  // reason: "format" (kein $ / unlesbar), "nocs" (ohne Prüfsumme), "bad" (Prüfsumme falsch)
+  function checkLine(line) {
+    const s = String(line).trim();
+    if (s[0] !== "$") return { ok: false, reason: "format", detail: "beginnt nicht mit $" };
+    const star = s.lastIndexOf("*");
+    if (star < 0) return { ok: false, reason: "nocs", detail: "ohne Prüfsumme" };
+    const body = s.slice(1, star), cs = s.slice(star + 1);
+    if (!/^[0-9A-Fa-f]{2}$/.test(cs)) return { ok: false, reason: "format", detail: "Prüfsumme unlesbar" };
+    const exp = nmeaChecksum(body);
+    if (exp !== cs.toUpperCase())
+      return { ok: false, reason: "bad", detail: "Prüfsumme falsch (erhalten " + cs.toUpperCase() + ", berechnet " + exp + ")" };
+    return { ok: true, body, fields: body.split(",") };
+  }
+
+  function num(s) {
+    if (s === undefined || s === null) return null;
+    s = String(s).trim();
+    if (s === "") return null;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  // NMEA-Breite ddmm.mmmm + N/S → Grad (Süd negativ)
+  function parseLat(v, h) {
+    v = (v || "").trim(); h = (h || "").trim().toUpperCase();
+    if (!/^\d{4}(\.\d+)?$/.test(v) || (h !== "N" && h !== "S")) return null;
+    const deg = Number(v.slice(0, 2)), min = Number(v.slice(2));
+    if (deg > 90 || min >= 60) return null;
+    const d = deg + min / 60;
+    return h === "S" ? -d : d;
+  }
+  // NMEA-Länge dddmm.mmmm + E/W → Grad (West negativ)
+  function parseLon(v, h) {
+    v = (v || "").trim(); h = (h || "").trim().toUpperCase();
+    if (!/^\d{5}(\.\d+)?$/.test(v) || (h !== "E" && h !== "W")) return null;
+    const deg = Number(v.slice(0, 3)), min = Number(v.slice(3));
+    if (deg > 180 || min >= 60) return null;
+    const d = deg + min / 60;
+    return h === "W" ? -d : d;
+  }
+  // hhmmss(.ss) → {hhmmss:"hhmmss", sec: Sekunden seit Mitternacht UTC}
+  function parseTime(v) {
+    const m = /^(\d{2})(\d{2})(\d{2})(\.\d+)?$/.exec((v || "").trim());
+    if (!m) return null;
+    const h = +m[1], mi = +m[2], s = +m[3];
+    if (h > 23 || mi > 59 || s > 60) return null;
+    return { hhmmss: m[1] + m[2] + m[3], sec: h * 3600 + mi * 60 + s + (m[4] ? Number(m[4]) : 0) };
+  }
+  // ddmmyy → {ddmmyy}
+  function parseDate(v) {
+    const m = /^(\d{2})(\d{2})(\d{2})$/.exec((v || "").trim());
+    if (!m) return null;
+    const d = +m[1], mo = +m[2];
+    if (d < 1 || d > 31 || mo < 1 || mo > 12) return null;
+    return { ddmmyy: m[0], dd: d, mm: mo, yy: +m[3] };
+  }
+
+  /* $--GGA (NMEA 0183): 1 UTC-Zeit, 2/3 Breite N/S, 4/5 Länge E/W, 6 Fix-Qualität (0 = ungültig),
+     7 Anzahl Satelliten, 8 HDOP, 9 Höhe über Meer (Geoid), 10 Einheit (M),
+     11 Geoid-Abstand (Geoid über Ellipsoid), 12 Einheit (M), 13/14 DGPS-Angaben */
+  function parseGGA(f) {
+    const altUnit = (f[10] || "").trim().toUpperCase(), sepUnit = (f[12] || "").trim().toUpperCase();
+    let alt = num(f[9]); if (alt !== null && altUnit !== "M") alt = null;
+    let sep = num(f[11]); if (sep !== null && sepUnit !== "M") sep = null;
+    return { time: parseTime(f[1]), lat: parseLat(f[2], f[3]), lon: parseLon(f[4], f[5]),
+             quality: num(f[6]), sats: num(f[7]), hdop: num(f[8]), alt, geoidSep: sep };
+  }
+  function ggaHasFix(g) { return !!g && g.quality !== null && g.quality >= 1 && g.lat !== null && g.lon !== null; }
+
+  /* $--RMC (NMEA 0183): 1 UTC-Zeit, 2 Status (A = gültig, V = Warnung), 3/4 Breite, 5/6 Länge,
+     7 Geschwindigkeit über Grund in Knoten, 8 Kurs über Grund (Grad, rechtweisend), 9 Datum ddmmyy */
+  function parseRMC(f) {
+    const status = (f[2] || "").trim().toUpperCase();
+    return { time: parseTime(f[1]), valid: status === "A", lat: parseLat(f[3], f[4]), lon: parseLon(f[5], f[6]),
+             speedKn: num(f[7]), course: num(f[8]), date: parseDate(f[9]) };
+  }
+
+  /* $LXWP0 (Quelle: XCSoar, LX/Parser.cpp und XCTracer/Parser.cpp):
+     1 Logger speichert (Y/N), 2 IAS (km/h, XCTracer: leer), 3 Baro-Höhe (m, bezogen auf 1013.25 hPa),
+     4–9 Vario (m/s; XCTracer füllt nur Feld 4), 10 Kurs, 11/12 Wind (XCTracer: leer).
+     Wie XCSoar bei weniger als 6 Werten: erster vorhandener Vario-Wert. */
+  function parseLXWP0(f) {
+    let vario = null;
+    for (let i = 4; i <= 9; i++) { const v = num(f[i]); if (v !== null) { vario = v; break; } }
+    return { baroAlt: num(f[3]), vario };
+  }
+
+  // Ganze Zeile: Prüfsumme prüfen und je nach Satztyp parsen.
+  function parseSentence(line) {
+    const c = checkLine(line);
+    if (!c.ok) return c;
+    const f = c.fields, name = f[0];
+    if (/^[A-Z]{2}GGA$/.test(name)) {
+      if (f.length < 11) return { ok: false, reason: "format", detail: "GGA mit zu wenig Feldern" };
+      return { ok: true, type: "gga", data: parseGGA(f) };
+    }
+    if (/^[A-Z]{2}RMC$/.test(name)) {
+      if (f.length < 10) return { ok: false, reason: "format", detail: "RMC mit zu wenig Feldern" };
+      return { ok: true, type: "rmc", data: parseRMC(f) };
+    }
+    if (name === "LXWP0") {
+      if (f.length < 5) return { ok: false, reason: "format", detail: "LXWP0 mit zu wenig Feldern" };
+      return { ok: true, type: "lxwp0", data: parseLXWP0(f) };
+    }
+    return { ok: true, type: "other", name };
+  }
+
+  /* ---------- Gleitende Fenster ----------
+     Proben {t (ms), v}. Jede Probe gilt bis zur nächsten, aber höchstens holdMs lang
+     (längere Lücken zählen nicht mit). Mittelwert = zeitgewichtet über [now-windowMs, now]. */
+  function pushSample(buf, t, v, keepMs) {
+    buf.push({ t, v });
+    const lim = t - keepMs;
+    let i = 0;
+    while (i < buf.length - 1 && buf[i + 1].t <= lim) i++;   // eine Probe vor dem Fenster behalten
+    if (i > 0) buf.splice(0, i);
+    return buf;
+  }
+
+  // state: "ok" | "nodata" (nichts im Fenster) | "filling" (Daten reichen noch nicht über das ganze Fenster)
+  //        | "gap" (zu viel Lücke im Fenster)
+  function windowMean(buf, now, windowMs, holdMs, minCoverage) {
+    const a = now - windowMs;
+    let sum = 0, cov = 0;
+    for (let i = 0; i < buf.length; i++) {
+      const s = buf[i];
+      const nextT = i + 1 < buf.length ? buf[i + 1].t : now;
+      const end = Math.min(nextT, s.t + holdMs, now);
+      const start = Math.max(s.t, a);
+      if (end > start) { sum += s.v * (end - start); cov += end - start; }
+    }
+    const coverage = windowMs > 0 ? cov / windowMs : 0;
+    const mean = cov > 0 ? sum / cov : null;
+    let state = "ok";
+    if (cov === 0) state = "nodata";
+    else if (!(buf[0].t <= a)) state = "filling";
+    else if (coverage < minCoverage) state = "gap";
+    return { mean, coverage, state, valid: state === "ok" };
+  }
+
+  /* Gleitzahl über Grund = mittlere Geschwindigkeit über Grund / mittleres Sinken.
+     Steigen im Fenster → negatives Ergebnis. Strich (state ≠ "ok") wenn Fenster nicht gefüllt,
+     Daten fehlen oder |Gleitzahl| > maxAbs (auch bei mittlerem Vario genau 0). */
+  function glideRatio(speedRes, varioRes, maxAbs) {
+    const st = [speedRes.state, varioRes.state];
+    if (st.includes("nodata")) return { state: "nodata", value: null };
+    if (st.includes("filling")) return { state: "filling", value: null };
+    if (st.includes("gap")) return { state: "gap", value: null };
+    const sink = -varioRes.mean;
+    if (sink === 0) return { state: "limit", value: null };
+    const r = speedRes.mean / sink;
+    if (!Number.isFinite(r) || Math.abs(r) > maxAbs) return { state: "limit", value: r };
+    return { state: "ok", value: r };
+  }
+
+  function nextMax(prev, v) {
+    if (v === null || v === undefined || !Number.isFinite(v)) return prev;
+    return prev === null || prev === undefined ? v : Math.max(prev, v);
+  }
+
+  /* ---------- Formatierung ---------- */
+  // Vorzeichen immer sichtbar: "+1.2", "−0.8", "0.0"
+  function fmtSigned(v, dec) {
+    if (v === null || v === undefined || !Number.isFinite(v)) return null;
+    const r = Number(v.toFixed(dec));
+    if (r === 0) return { text: (0).toFixed(dec), sign: 0 };
+    return { text: (r > 0 ? "+" : MINUS) + Math.abs(r).toFixed(dec), sign: r > 0 ? 1 : -1 };
+  }
+  function fmtGlide(v) {
+    if (v === null || v === undefined || !Number.isFinite(v)) return null;
+    const a = Math.abs(v);
+    const s = a < 9.95 ? a.toFixed(1) : String(Math.round(a));
+    if (Number(s) === 0) return s;
+    return (v < 0 ? MINUS : "") + s;
+  }
+  function compass8(deg) {
+    if (deg === null || !Number.isFinite(deg)) return "";
+    return ["N", "NO", "O", "SO", "S", "SW", "W", "NW"][Math.round((((deg % 360) + 360) % 360) / 45) % 8];
+  }
+  function fmtDuration(ms) {
+    if (!(ms >= 0)) return "–";
+    const t = Math.floor(ms / 1000), h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+    return h + ":" + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+  }
+
+  /* ---------- IGC-Export ----------
+     Nach FAI/IGC „Technical Specification for IGC-approved GNSS Flight Recorders“, 2nd Ed. with AL9:
+     - A-Record: A + Hersteller (XYY für nicht zugelassene Geräte) + Seriennummer
+     - B-Record (35 Zeichen): B HHMMSS DDMMmmmN DDDMMmmmE V PPPPP GGGGG
+       Validity A = 3D-Fix, V = 2D/kein GNSS (GNSS-Höhe dann 00000)
+       Druckhöhe in m nach ICAO-ISA (1013.25 hPa), GNSS-Höhe in m über WGS84-Ellipsoid
+       (nicht zugelassene Geräte dürfen GEO = Geoid angeben: Kopfzeile HFALG)
+       negative Werte mit Minuszeichen statt führender Null
+     - Zeilenende CRLF, nur Zeichen 0x20–0x7D ohne ! $ * \ ^
+     - HFFRSSECURITYSUSPECT kennzeichnet eine Datei, deren Sicherheit nicht gegeben ist. */
+  const pad = (n, w) => String(n).padStart(w, "0");
+  function igcLat(deg) {
+    const h = deg < 0 ? "S" : "N", a = Math.abs(deg);
+    let d = Math.floor(a), m = Math.round((a - d) * 60000);
+    if (m >= 60000) { d += 1; m -= 60000; }
+    return pad(d, 2) + pad(m, 5) + h;
+  }
+  function igcLon(deg) {
+    const h = deg < 0 ? "W" : "E", a = Math.abs(deg);
+    let d = Math.floor(a), m = Math.round((a - d) * 60000);
+    if (m >= 60000) { d += 1; m -= 60000; }
+    return pad(d, 3) + pad(m, 5) + h;
+  }
+  function igcAlt(m) {
+    if (m === null || m === undefined || !Number.isFinite(m)) return "00000";
+    let r = Math.round(m);
+    if (r < 0) { r = Math.max(r, -9999); return "-" + pad(-r, 4); }
+    return pad(Math.min(r, 99999), 5);
+  }
+  function igcText(s) {
+    const map = { "ä": "ae", "ö": "oe", "ü": "ue", "Ä": "Ae", "Ö": "Oe", "Ü": "Ue", "ß": "ss", "é": "e", "è": "e", "à": "a" };
+    return String(s || "").replace(/[äöüÄÖÜßéèà]/g, c => map[c])
+      .replace(/[^\x20-\x7D]/g, "?").replace(/[!$*\\^]/g, "?");
+  }
+
+  /* fixes: [{utc:"hhmmss", date:"ddmmyy"|null, lat, lon, q, alt (m über Meer), sep (Geoid-Abstand), pAlt}]
+     opts: {fallbackDate:"ddmmyy", pilot, glider, version, flightNo} */
+  function buildIgc(fixes, opts) {
+    opts = opts || {};
+    const MFR = "XEB", SID = "BLEAPP";
+    const withAlt = fixes.filter(f => f.q >= 1 && f.alt !== null && f.alt !== undefined);
+    const useEll = withAlt.length > 0 && withAlt.every(f => f.sep !== null && f.sep !== undefined);
+    const anyP = fixes.some(f => f.pAlt !== null && f.pAlt !== undefined);
+    const b = [];
+    let date = null, lastUtc = null, lastLat = null, lastLon = null, anyValidAlt = false;
+    for (const f of fixes) {
+      if (!f || !/^\d{6}$/.test(f.utc || "")) continue;
+      if (f.utc === lastUtc) continue;                       // höchstens ein B-Record pro UTC-Sekunde
+      const hasPos = f.q >= 1 && f.lat !== null && f.lat !== undefined && f.lon !== null && f.lon !== undefined;
+      if (hasPos) { lastLat = f.lat; lastLon = f.lon; }
+      if (lastLat === null) continue;                        // noch nie eine Position
+      if (!date && f.date) date = f.date;
+      const valid = hasPos && f.alt !== null && f.alt !== undefined;
+      if (valid) anyValidAlt = true;
+      const g = valid ? (useEll ? f.alt + f.sep : f.alt) : null;
+      b.push("B" + f.utc + igcLat(lastLat) + igcLon(lastLon) + (valid ? "A" : "V") + igcAlt(f.pAlt) + igcAlt(g));
+      lastUtc = f.utc;
+    }
+    if (!date) { for (const f of fixes) if (f && f.date) { date = f.date; break; } }
+    if (!date) date = opts.fallbackDate || "010100";
+    const nn = pad(Math.max(1, Math.min(99, opts.flightNo || 1)), 2);
+    const lines = [
+      "A" + MFR + SID + "-NICHT-SIGNIERT",
+      "HFDTEDATE:" + date + "," + nn,
+      "HFPLTPILOTINCHARGE:" + igcText(opts.pilot),
+      "HFCM2CREW2:",
+      "HFGTYGLIDERTYPE:" + igcText(opts.glider),
+      "HFGIDGLIDERID:",
+      "HFDTMGPSDATUM:WGS84",
+      "HFRFWFIRMWAREVERSION:" + igcText(opts.version || ""),
+      "HFRHWHARDWAREVERSION:XCTracer Mini V",
+      "HFFTYFRTYPE:" + MFR + ",BLE Flug-Anzeige Eigenbau (nicht IGC-zugelassen)",
+      "HFGPSRECEIVER:XCTracer,Mini V",
+      "HFPRSPRESSALTSENSOR:" + (anyP ? "XCTracer,Mini V (Baro-Hoehe aus LXWP0)" : "keiner"),
+      "HFFRSSECURITYSUSPECT:NICHT SIGNIERT - KEIN G-RECORD - NICHT FUER WETTBEWERBE",
+      "HFALGALTGPS:" + (!anyValidAlt ? "NIL" : useEll ? "ELL" : "GEO"),
+      "HFALPALTPRESSURE:" + (anyP ? "ISA" : "NIL"),
+      "L" + MFR + "NICHT SIGNIERT, NICHT FUER WETTBEWERBE. Eigenbau ohne Zulassung.",
+    ].concat(b);
+    const fileName = "20" + date.slice(4, 6) + "-" + date.slice(2, 4) + "-" + date.slice(0, 2) + "-" + MFR + "-" + SID + "-" + nn + ".igc";
+    return { text: lines.join("\r\n") + "\r\n", bCount: b.length, fileName, altRef: !anyValidAlt ? "NIL" : useEll ? "ELL" : "GEO" };
+  }
+
+  // Datum (UTC) eines Zeitstempels als ddmmyy
+  function ddmmyyUTC(ms) {
+    const d = new Date(ms);
+    return pad(d.getUTCDate(), 2) + pad(d.getUTCMonth() + 1, 2) + pad(d.getUTCFullYear() % 100, 2);
+  }
+
+  return { KN_TO_MS, KN_TO_KMH, MINUS, nmeaChecksum, checkLine, num, parseLat, parseLon, parseTime, parseDate,
+           parseGGA, parseRMC, parseLXWP0, parseSentence, ggaHasFix, pushSample, windowMean, glideRatio, nextMax,
+           fmtSigned, fmtGlide, compass8, fmtDuration, igcLat, igcLon, igcAlt, igcText, buildIgc, ddmmyyUTC };
+})();
+/*CORE-END*/
+</script>
 
 <script>
 "use strict";
+/* ---------- Fehlermeldungen im Klartext (Leiste oben, auf jeder Seite) ---------- */
+var errTimer = null;
+function showErrorBanner(text) {
+  var bar = document.getElementById("errbar");
+  document.getElementById("errText").textContent = text;
+  bar.classList.add("show");
+  clearTimeout(errTimer);
+  errTimer = setTimeout(function () { bar.classList.remove("show"); }, 12000);
+}
+document.getElementById("errClose").onclick = function () { document.getElementById("errbar").classList.remove("show"); };
 
 /* ---------- Konfiguration ---------- */
 const DEFAULT_UUIDS = [
@@ -183,6 +657,7 @@ const lineBuffers = new Map(); // pro Characteristic: unvollständige Zeile
 let paused = false;
 
 function setConn(state) {
+  connState = state;   // für Statusleiste und Instrumente
   const el = $("conn");
   const txt = { none: "nicht verbunden", connecting: "verbindet …", connected: "verbunden", disconnected: "getrennt" }[state];
   el.textContent = txt; el.className = "v s-" + state;
@@ -196,6 +671,7 @@ function ts(d = new Date()) {
 }
 function esc(s) { return s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
 function log(text, cls = "", extraHtml = "") {
+  if (cls === "err") showErrorBanner(text);   // Fehler auf jeder Seite im Klartext
   if (paused && cls !== "sys" && cls !== "err") return;
   const div = document.createElement("div");
   div.innerHTML = `<span class="ts">${ts()}</span> <span class="${cls}">${esc(text)}</span>${extraHtml}`;
@@ -422,105 +898,629 @@ function onData(key, dataView, stat) {
 function shortKey(key) { const c = key.split("/")[1] || key; return c.slice(4, 8); }
 
 function handleLine(line, key) {
+  // Zuerst auswerten und aufzeichnen (unabhängig von Pause und 200-Zeilen-Grenze der Anzeige)
+  let res = null;
+  try { res = ingestLine(line, performance.now(), Date.now()); }
+  catch (e) { log("Fehler beim Verarbeiten einer Zeile: " + errText(e), "err"); }
   // Nicht druckbare Zeichen in der Zeile als Hex sichtbar machen
   const clean = Array.from(line).every(ch => { const c = ch.charCodeAt(0); return c >= 32 && c !== 127; });
   const extra = clean ? "" : ` <span class="hex">hex: ${toHex(new TextEncoder().encode(line))}</span>`;
-  log(line, "", extra);
-  if (line.startsWith("$LK8EX1")) showLK8EX1(line);
-  else if (line.startsWith("$LXWP0")) showLXWP0(line);
+  const mark = res && !res.ok ? ` <span class="err">✗ verworfen: ${esc(res.detail)}</span>` : "";
+  log(line, res && !res.ok ? "bad" : "", extra + mark);
 }
 
-/* ---------- NMEA-Prüfsumme ---------- */
-// Prüfsumme = XOR aller Zeichen zwischen '$' und '*', als 2-stellige Hexzahl.
-function checkNmea(line) {
-  const m = line.match(/^\$([^*]*)\*([0-9A-Fa-f]{2})\s*$/);
-  if (!m) return { body: line.replace(/^\$/, "").split("*")[0], ok: null, msg: "keine Prüfsumme" };
-  let x = 0;
-  for (let i = 0; i < m[1].length; i++) x ^= m[1].charCodeAt(i);
-  const expected = x.toString(16).toUpperCase().padStart(2, "0");
-  const got = m[2].toUpperCase();
-  return { body: m[1], ok: expected === got, msg: expected === got ? "Prüfsumme OK (" + got + ")" : `Prüfsumme FALSCH (erhalten ${got}, berechnet ${expected})` };
-}
+/* =====================================================================
+   FLUG-ANZEIGE
+   ===================================================================== */
+const APP_VERSION = "2026-11-22.1";
+const STALE_MS = 2000;          // ohne neue Daten länger als das → „keine Daten“
+const HOLD_MS = 2000;           // ein Messwert gilt höchstens so lange (Lücken zählen nicht)
+const MIN_COVERAGE = 0.9;       // Fenster gilt als gefüllt ab 90 % Abdeckung
+const KEEP_MS = 125000 + HOLD_MS;
 
-function row(label, value, note = "") {
-  return `<tr><td>${esc(label)}${note ? `<div class="note">${esc(note)}</div>` : ""}</td><td>${esc(String(value))}</td></tr>`;
-}
-function num(s) { if (s === undefined || s.trim() === "") return null; const n = Number(s); return Number.isFinite(n) ? n : null; }
+let connState = "none";
+const varioBuf = [], speedBuf = [];
+const cur = { vario: null, baroAlt: null, gga: null, rmc: null };
+const tLast = { vario: -1e12, baro: -1e12, gga: -1e12, rmc: -1e12 };
+const stats = { lines: 0, bad: { bad: 0, nocs: 0, format: 0 }, types: { gga: 0, rmc: 0, lxwp0: 0, other: 0 } };
+const lineTimes = [];
+let maxAlt = null;
+let lastRmcDate = null;
 
-/* ---------- $LK8EX1 ----------
-   Format: $LK8EX1,Druck,Höhe,Vario,Temperatur,Batterie*CS
-   Belegt (BlueFlyVario-Handbuch): Druck in Pa (ganzzahlig), Vario in cm/s (ganzzahlig),
-   Temperatur in °C, Batterie (BlueFly: Spannung in V); Höhe wird mit Platzhalter 99999 gefüllt,
-   wenn das Gerät den Druck sendet.
-   Die übrigen „nicht verfügbar“-Werte (999999, 9999, 99, 999) und die Batterie-Kodierung
-   „>1000 = Prozent+1000“ stammen aus der LK8000-Beschreibung und sind hier NICHT
-   direkt verifiziert – sie werden darum als unsicher markiert. */
-function showLK8EX1(line) {
-  const cs = checkNmea(line);
-  const f = cs.body.split(",");           // f[0] = "LK8EX1"
-  const p = num(f[1]), alt = num(f[2]), vario = num(f[3]), temp = num(f[4]), bat = num(f[5]);
-  let h = `<b>$LK8EX1</b> · <span class="${cs.ok === false ? "cs-bad" : cs.ok ? "cs-ok" : ""}">${esc(cs.msg)}</span> · ${ts()}<table>`;
-
-  if (p === null) h += row("Druck", "leer");
-  else if (p === 999999) h += row("Druck", "nicht verfügbar (999999)", "Platzhalter-Wert: unsicher");
-  else {
-    h += row("Druck", (p / 100).toFixed(2) + " hPa", "Rohwert " + p + " Pa");
-    // Druckhöhe nach ICAO-Standardatmosphäre (QNE, 1013.25 hPa) – eigene Berechnung
-    const qne = 44330.77 * (1 - Math.pow(p / 101325, 0.190263));
-    h += row("Druckhöhe (berechnet)", qne.toFixed(1) + " m", "aus Druck, Standardatmosphäre 1013.25 hPa");
+function ingestLine(line, tp, te) {
+  stats.lines++;
+  lineTimes.push(tp);
+  if (rec.active) rec.lines.push([te, line]);
+  const p = Core.parseSentence(line);
+  if (!p.ok) { stats.bad[p.reason] = (stats.bad[p.reason] || 0) + 1; return p; }
+  stats.types[p.type] = (stats.types[p.type] || 0) + 1;
+  const d = p.data;
+  if (p.type === "lxwp0") {
+    if (d.vario !== null) { cur.vario = d.vario; tLast.vario = tp; Core.pushSample(varioBuf, tp, d.vario, KEEP_MS); }
+    if (d.baroAlt !== null) { cur.baroAlt = d.baroAlt; tLast.baro = tp; }   // nur für Rohlog/IGC, wird nicht angezeigt
+  } else if (p.type === "rmc") {
+    cur.rmc = d; tLast.rmc = tp;
+    if (d.date) lastRmcDate = d.date.ddmmyy;
+    if (d.valid && d.speedKn !== null) Core.pushSample(speedBuf, tp, d.speedKn * Core.KN_TO_MS, KEEP_MS);
+  } else if (p.type === "gga") {
+    cur.gga = d; tLast.gga = tp;
+    if (Core.ggaHasFix(d) && d.alt !== null) maxAlt = Core.nextMax(maxAlt, d.alt);
+    if (rec.active && d.time) {
+      rec.fixes.push({ utc: d.time.hhmmss, date: lastRmcDate, lat: d.lat, lon: d.lon, q: d.quality,
+        alt: d.alt, sep: d.geoidSep, sats: d.sats, pAlt: tp - tLast.baro <= STALE_MS ? cur.baroAlt : null });
+    }
   }
-  if (alt === null) h += row("Höhe", "leer");
-  else if (alt === 99999) h += row("Höhe", "nicht gesendet (99999)", "Gerät liefert stattdessen den Druck");
-  else h += row("Höhe", alt + " m");
-
-  if (vario === null) h += row("Steigen", "leer");
-  else if (vario === 9999) h += row("Steigen", "nicht verfügbar (9999)", "Platzhalter-Wert: unsicher");
-  else h += row("Steigen", (vario / 100).toFixed(2) + " m/s", "Rohwert " + vario + " cm/s");
-
-  if (temp === null) h += row("Temperatur", "leer");
-  else if (temp === 99) h += row("Temperatur", "99 – evtl. „nicht verfügbar“", "Platzhalter-Wert: unsicher");
-  else h += row("Temperatur", temp + " °C");
-
-  if (bat === null) h += row("Batterie", "leer");
-  else if (bat === 999) h += row("Batterie", "999 – evtl. „nicht verfügbar“", "Platzhalter-Wert: unsicher");
-  else if (bat > 1000) h += row("Batterie", (bat - 1000) + " %", "Rohwert " + bat + "; Deutung „Wert−1000 = Prozent“ unsicher");
-  else h += row("Batterie (Rohwert)", bat, "Spannung (V) oder Prozent – Bedeutung beim XCTracer unsicher");
-
-  h += `</table><div class="note">Rohzeile: ${esc(line)}</div>`;
-  $("parsedLK").innerHTML = h;
+  return p;
 }
 
-/* ---------- $LXWP0 ----------
-   Allgemeines LX-Format (XCSoar, src/Device/Driver/LX/Parser.cpp):
-     1 Logger speichert (Y/N), 2 IAS (km/h), 3 Baro-Höhe (m),
-     4–9 Vario (m/s, letzte 6 Messungen der letzten Sekunde), 10 Steuerkurs,
-     11 Windrichtung (°), 12 Windgeschwindigkeit (km/h)
-   XCTracer füllt laut XCSoar (src/Device/Driver/XCTracer/Parser.cpp) nur:
-     Feld 3 Baro-Höhe (unkorrigiert, bezogen auf 1013.25 hPa), Feld 4 Vario (m/s),
-     Feld 10 Kurs (0..360); der Rest ist „n.u.“ (nicht benutzt).
-   Leere Felder = nicht verfügbar. */
-function showLXWP0(line) {
-  const cs = checkNmea(line);
-  const f = cs.body.split(",");           // f[0] = "LXWP0", f[1] = Feld 1 …
-  const show = (label, i, unit, note) => {
-    const v = f[i];
-    if (v === undefined || v.trim() === "") return "";   // leere Felder ausblenden
-    return row(label, v + (unit ? " " + unit : ""), note);
+/* ---------- Einstellungen ---------- */
+const GRIDS = { "1x1": [1, 1], "1x2": [1, 2], "1x3": [1, 3], "1x4": [1, 4], "2x2": [2, 2], "2x3": [2, 3], "2x4": [2, 4] };
+const INSTRUMENTS = {
+  climb:    { name: "Steigen", long: "Aktuelles Steigen", unit: "m/s" },
+  climbAvg: { name: "Integr. Steigen", long: "Integriertes Steigen", unit: "m/s" },
+  altGps:   { name: "GPS-Höhe", long: "GPS-Höhe", unit: "m" },
+  altMax:   { name: "Max. Höhe", long: "Max. Höhe (GPS)", unit: "m" },
+  speed:    { name: "Geschw. über Grund", long: "Geschwindigkeit über Grund", unit: "km/h" },
+  glide:    { name: "Gleitzahl über Grund", long: "Gleitzahl über Grund", unit: "" },
+  course:   { name: "Kurs über Grund", long: "Kurs über Grund", unit: "°" },
+  gpsQual:  { name: "GPS-Qualität", long: "GPS-Qualität (Satelliten, HDOP)", unit: "Sat" },
+  clock:    { name: "Uhrzeit", long: "Uhrzeit", unit: "", cls: "long" },
+  recTime:  { name: "Aufzeichnung", long: "Zeit seit Aufzeichnungsstart", unit: "", cls: "long" },
+  conn:     { name: "Verbindung", long: "Verbindungsstatus und Datenrate", unit: "", cls: "text" },
+};
+const DEFAULT_SETTINGS = {
+  intWin: 16, glideWin: 10, glideMax: 60, wake: true, pilot: "", glider: "",
+  pages: {
+    flug: { grid: "2x3", boxes: ["climb", "climbAvg", "altGps", "speed", "glide", "course"] },
+    info: { grid: "2x2", boxes: ["gpsQual", "altMax", "clock", "conn"] },
+  },
+};
+const SET_KEY = "flugapp.settings.v1";
+const clampInt = (v, lo, hi, def) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : def; };
+const FILL_ORDER = Object.keys(INSTRUMENTS);
+
+function normalizePage(p, def) {
+  const grid = p && GRIDS[p.grid] ? p.grid : def.grid;
+  const n = GRIDS[grid][0] * GRIDS[grid][1];
+  const src = p && Array.isArray(p.boxes) ? p.boxes : def.boxes;
+  const boxes = [];
+  for (let i = 0; i < n; i++) {
+    const id = src[i] in INSTRUMENTS ? src[i] : (def.boxes[i] || FILL_ORDER.find(k => !boxes.includes(k)) || "clock");
+    boxes.push(id);
+  }
+  return { grid, boxes };
+}
+function normalizeSettings(s) {
+  const d = DEFAULT_SETTINGS;
+  s = s && typeof s === "object" ? s : {};
+  return {
+    intWin: clampInt(s.intWin, 5, 120, d.intWin),
+    glideWin: clampInt(s.glideWin, 5, 60, d.glideWin),
+    glideMax: clampInt(s.glideMax, 5, 500, d.glideMax),
+    wake: s.wake === undefined ? d.wake : !!s.wake,
+    pilot: typeof s.pilot === "string" ? s.pilot.slice(0, 60) : "",
+    glider: typeof s.glider === "string" ? s.glider.slice(0, 60) : "",
+    pages: { flug: normalizePage(s.pages && s.pages.flug, d.pages.flug), info: normalizePage(s.pages && s.pages.info, d.pages.info) },
   };
-  let h = `<b>$LXWP0</b> · <span class="${cs.ok === false ? "cs-bad" : cs.ok ? "cs-ok" : ""}">${esc(cs.msg)}</span> · ${ts()}<table>`;
-  h += show("Logger speichert", 1, "", "Y = ja, N = nein");
-  h += show("Fluggeschwindigkeit IAS", 2, "km/h", "beim XCTracer nicht benutzt");
-  h += show("Baro-Höhe", 3, "m", "Druckhöhe bezogen auf 1013.25 hPa (QNE), nicht QNH-korrigiert");
-  const varios = [];
-  for (let i = 4; i <= 9; i++) if (f[i] !== undefined && f[i].trim() !== "") varios.push(f[i]);
-  if (varios.length) h += row("Steigen", varios.join(" / ") + " m/s",
-    varios.length > 1 ? "mehrere Messwerte der letzten Sekunde" : "");
-  h += show("Kurs / Steuerkurs", 10, "°", "XCTracer: Kurs über Grund 0..360");
-  h += show("Windrichtung", 11, "°");
-  h += show("Windgeschwindigkeit", 12, "km/h");
-  h += `</table><div class="note">Leere Felder sind ausgeblendet. Rohzeile: ${esc(line)}</div>`;
-  $("parsedLX").innerHTML = h;
 }
+let settings = (() => { try { return normalizeSettings(JSON.parse(lsGet(SET_KEY) || "null")); } catch (e) { return normalizeSettings(null); } })();
+function saveSettings() { lsSet(SET_KEY, JSON.stringify(settings)); }
+
+/* ---------- Instrumente berechnen ---------- */
+// Ergebnis: {text, sub, tone ("pos"|"neg"|"ok"|"warn"|"bad"|""), stale, unit?}
+function freshOf(key, now) { return now - tLast[key] <= STALE_MS; }
+const SUB_STATE = { nodata: "keine Daten", filling: "Fenster füllt sich", gap: "Datenlücke" };
+
+function computeInstrument(id, now, noData) {
+  const DASH = "–";
+  switch (id) {
+    case "climb": {
+      const stale = noData || !freshOf("vario", now) || cur.vario === null;
+      const f = Core.fmtSigned(cur.vario, 1);
+      return { text: f ? f.text : DASH, tone: f ? (f.sign > 0 ? "pos" : f.sign < 0 ? "neg" : "") : "", sub: "LXWP0", stale };
+    }
+    case "climbAvg": {
+      const r = Core.windowMean(varioBuf, now, settings.intWin * 1000, HOLD_MS, MIN_COVERAGE);
+      const stale = noData || !freshOf("vario", now);
+      if (!r.valid) return { text: DASH, tone: "", sub: SUB_STATE[r.state] + " (" + settings.intWin + " s)", stale };
+      const f = Core.fmtSigned(r.mean, 1);
+      return { text: f.text, tone: f.sign > 0 ? "pos" : f.sign < 0 ? "neg" : "", sub: "Mittel " + settings.intWin + " s", stale };
+    }
+    case "altGps": {
+      const g = cur.gga, stale = noData || !freshOf("gga", now);
+      if (!g) return { text: DASH, sub: "keine Daten", stale: true };
+      if (!Core.ggaHasFix(g)) return { text: DASH, sub: "kein GPS-Fix", stale, tone: "bad" };
+      if (g.alt === null) return { text: DASH, sub: "keine Höhe", stale };
+      return { text: String(Math.round(g.alt)), sub: "über Meer", stale };
+    }
+    case "altMax":
+      return { text: maxAlt === null ? DASH : String(Math.round(maxAlt)), sub: "seit App-Start", stale: noData };
+    case "speed": {
+      const r = cur.rmc, stale = noData || !freshOf("rmc", now);
+      if (!r) return { text: DASH, sub: "keine Daten", stale: true };
+      if (!r.valid || r.speedKn === null) return { text: DASH, sub: "kein GPS-Fix", stale, tone: "bad" };
+      return { text: String(Math.round(r.speedKn * Core.KN_TO_KMH)), sub: "GPS", stale };
+    }
+    case "glide": {
+      const W = settings.glideWin * 1000;
+      const g = Core.glideRatio(Core.windowMean(speedBuf, now, W, HOLD_MS, MIN_COVERAGE),
+                                Core.windowMean(varioBuf, now, W, HOLD_MS, MIN_COVERAGE), settings.glideMax);
+      const stale = noData || !freshOf("vario", now) || !freshOf("rmc", now);
+      if (g.state === "ok") return { text: Core.fmtGlide(g.value), sub: "Mittel " + settings.glideWin + " s", stale };
+      const sub = g.state === "limit" ? "Betrag über " + settings.glideMax : SUB_STATE[g.state] + " (" + settings.glideWin + " s)";
+      return { text: DASH, sub, stale };
+    }
+    case "course": {
+      const r = cur.rmc, stale = noData || !freshOf("rmc", now);
+      if (!r) return { text: DASH, sub: "keine Daten", stale: true };
+      if (!r.valid || r.course === null) return { text: DASH, sub: "kein GPS-Fix", stale, tone: "bad" };
+      const c = ((Math.round(r.course) % 360) + 360) % 360;
+      return { text: String(c).padStart(3, "0"), sub: Core.compass8(c), stale };
+    }
+    case "gpsQual": {
+      const g = cur.gga, stale = noData || !freshOf("gga", now);
+      if (!g) return { text: DASH, sub: "keine Daten", stale: true };
+      const q = g.quality;
+      const fix = q === null ? "Fix ?" : q === 0 ? "kein Fix" : q === 1 ? "GPS-Fix" : q === 2 ? "DGPS-Fix" : "Fix-Qualität " + q;
+      return { text: g.sats === null ? DASH : String(g.sats), sub: "HDOP " + (g.hdop === null ? "–" : g.hdop.toFixed(1)) + " · " + fix,
+               stale, tone: q === 0 ? "bad" : "" };
+    }
+    case "clock": {
+      const d = new Date();
+      return { text: d.toLocaleTimeString("de-CH", { hour12: false }), sub: "Gerätezeit", stale: false };
+    }
+    case "recTime":
+      if (!rec.active) return { text: "–", sub: "keine Aufzeichnung", stale: false };
+      return { text: Core.fmtDuration(Date.now() - rec.session.start), sub: "Aufzeichnung läuft", stale: false, tone: "bad" };
+    case "conn": {
+      const label = { none: "getrennt", connecting: "verbindet …", connected: "verbunden", disconnected: "getrennt" }[connState];
+      const age = lastMsgAt ? ((now - lastMsgAt) / 1000).toFixed(1) + " s" : "–";
+      const tone = connState === "connected" ? (noData ? "warn" : "ok") : connState === "connecting" ? "warn" : "bad";
+      return { text: label, sub: lineRate(now).toFixed(1) + " Zeilen/s · Alter " + age, stale: false, tone };
+    }
+  }
+  return { text: "?", sub: "", stale: false };
+}
+function lineRate(now) {
+  while (lineTimes.length && now - lineTimes[0] > 5000) lineTimes.shift();
+  return lineTimes.length / 5;
+}
+
+/* ---------- Seiten aufbauen ---------- */
+const pageRefs = { flug: [], info: [] };
+function buildInstrumentPage(pid) {
+  const cfg = settings.pages[pid];
+  const [cols, rows] = GRIDS[cfg.grid];
+  const grid = document.querySelector("#page-" + pid + " .igrid");
+  grid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+  grid.style.gridTemplateRows = `repeat(${rows}, minmax(0, 1fr))`;
+  grid.innerHTML = "";
+  pageRefs[pid] = cfg.boxes.map(id => {
+    const def = INSTRUMENTS[id];
+    const el = document.createElement("div");
+    el.className = "ibox" + (def.cls ? " " + def.cls : "");
+    el.innerHTML = `<div class="lbl"><span class="name"></span><span class="flag">KEINE DATEN</span><span class="unit"></span></div>
+      <div class="val"><span class="num">–</span></div><div class="sub"></div>`;
+    el.querySelector(".name").textContent = def.name;
+    el.querySelector(".unit").textContent = def.unit;
+    grid.appendChild(el);
+    return { id, el, num: el.querySelector(".num"), sub: el.querySelector(".sub"), base: el.className, last: "", lastLen: -1, lastCls: "" };
+  });
+}
+function fitText(el) {
+  el.style.fontSize = "";
+  const avail = el.parentElement.clientWidth * 0.97;
+  const w = el.scrollWidth;
+  if (w > avail && w > 0) {
+    const fs = parseFloat(getComputedStyle(el).fontSize);
+    el.style.fontSize = Math.max(10, Math.floor(fs * avail / w)) + "px";
+  }
+}
+function renderInstrumentPage(pid, now, noData) {
+  for (const r of pageRefs[pid]) {
+    const v = computeInstrument(r.id, now, noData);
+    if (v.text !== r.last) {
+      r.num.textContent = v.text;
+      if (v.text.length !== r.lastLen) { fitText(r.num); r.lastLen = v.text.length; }
+      r.last = v.text;
+    }
+    if (r.sub.textContent !== (v.sub || "")) r.sub.textContent = v.sub || "";
+    const cls = r.base + (v.tone ? " t-" + v.tone : "") + (v.stale ? " stale" : "");
+    if (cls !== r.lastCls) { r.el.className = cls; r.lastCls = cls; }
+  }
+}
+function refitAll() { for (const pid in pageRefs) for (const r of pageRefs[pid]) { fitText(r.num); r.lastLen = r.num.textContent.length; } }
+window.addEventListener("resize", () => setTimeout(refitAll, 50));
+
+/* ---------- Reiter ---------- */
+const TABS = ["flug", "info", "verbinden", "roh", "aufz", "einst"];
+let activeTab = lsGet("flugapp.tab");
+if (!TABS.includes(activeTab)) activeTab = "verbinden";
+function showTab(t) {
+  activeTab = t;
+  lsSet("flugapp.tab", t);
+  for (const id of TABS) $("page-" + id).classList.toggle("active", id === t);
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
+  if (t === "flug" || t === "info") requestAnimationFrame(refitAll);
+  if (t === "aufz") refreshSessions();
+  if (t === "roh") rawEl.scrollTop = rawEl.scrollHeight;
+  render();
+}
+document.querySelectorAll("#tabs button").forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab)));
+$("sbar").addEventListener("click", () => showTab("verbinden"));
+
+/* ---------- Gesten abfangen: kein Zoomen, kein Ziehen ausserhalb der Scrollbereiche ---------- */
+document.addEventListener("touchmove", (e) => {
+  if (!e.target.closest || !e.target.closest(".page.scroll, #raw, textarea")) e.preventDefault();
+}, { passive: false });
+document.addEventListener("gesturestart", (e) => e.preventDefault());
+document.addEventListener("dblclick", (e) => e.preventDefault());
+
+/* ---------- Laufende Anzeige ---------- */
+function render() {
+  const now = performance.now();
+  const age = lastMsgAt ? now - lastMsgAt : Infinity;
+  const noData = connState !== "connected" || age > STALE_MS;
+
+  // Statusleiste
+  const sb = $("sbar");
+  const txt = { none: "nicht verbunden", connecting: "verbindet …", connected: "verbunden", disconnected: "GETRENNT" }[connState];
+  sb.className = connState === "connected" ? (noData ? "st-stale" : "st-ok") : connState === "connecting" ? "st-busy st-stale" : "st-bad";
+  $("sbText").textContent = connState === "connected" && noData ? "KEINE DATEN" : txt + (device && device.name && connState === "connected" ? " · " + device.name : "");
+  $("sbAge").textContent = lastMsgAt ? (age / 1000).toFixed(1) + " s" : "";
+  $("sbRate").textContent = connState === "connected" ? lineRate(now).toFixed(0) + "/s" : "";
+  const sbRec = $("sbRec");
+  if (rec.active) { sbRec.textContent = "● REC"; sbRec.className = ""; }
+  else if (rec.interrupted.length) { sbRec.textContent = "⚠ Aufz."; sbRec.className = "warn"; }
+  else sbRec.textContent = "";
+
+  if (activeTab === "flug" || activeTab === "info") renderInstrumentPage(activeTab, now, noData);
+  if (activeTab === "roh") {
+    const b = stats.bad;
+    $("rawStats").textContent = `Zeilen ${stats.lines} · verworfen: Prüfsumme falsch ${b.bad}, ohne Prüfsumme ${b.nocs}, unlesbar ${b.format}`
+      + ` · GGA ${stats.types.gga} · RMC ${stats.types.rmc} · LXWP0 ${stats.types.lxwp0} · andere ${stats.types.other}`;
+  }
+  if (activeTab === "aufz") renderRecInfo();
+  if (activeTab === "einst") { $("wakeState").textContent = wakeState; $("swState").textContent = swState; }
+}
+setInterval(render, 250);
+
+/* ---------- Einstellungsseite ---------- */
+function buildSettingsUI() {
+  $("setIntWin").value = settings.intWin;
+  $("setGlideWin").value = settings.glideWin;
+  $("setGlideMax").value = settings.glideMax;
+  $("setWake").checked = settings.wake;
+  $("setPilot").value = settings.pilot;
+  $("setGlider").value = settings.glider;
+  $("appVer").textContent = APP_VERSION;
+  for (const pid of ["flug", "info"]) {
+    const host = $("cfg-" + pid);
+    const cfg = settings.pages[pid];
+    const gridOpts = Object.keys(GRIDS).map(g => {
+      const [c, r] = GRIDS[g];
+      return `<option value="${g}"${g === cfg.grid ? " selected" : ""}>${c} × ${r} (${c} Spalte${c > 1 ? "n" : ""}, ${r} Zeile${r > 1 ? "n" : ""})</option>`;
+    }).join("");
+    const instOpts = (sel) => Object.keys(INSTRUMENTS).map(k => `<option value="${k}"${k === sel ? " selected" : ""}>${esc(INSTRUMENTS[k].long)}</option>`).join("");
+    const [cols] = GRIDS[cfg.grid];
+    host.innerHTML = `<label class="hint">Raster (Spalten × Zeilen)</label><select data-grid="${pid}">${gridOpts}</select>
+      <div class="boxsel">${cfg.boxes.map((id, i) => `<div><label>Kasten ${i + 1} (Zeile ${Math.floor(i / cols) + 1}, Spalte ${i % cols + 1})</label>
+      <select data-box="${pid}" data-i="${i}">${instOpts(id)}</select></div>`).join("")}</div>`;
+  }
+}
+function onSettingsChange(e) {
+  const t = e.target;
+  if (t.dataset.grid) {
+    const pid = t.dataset.grid;
+    settings.pages[pid] = normalizePage({ grid: t.value, boxes: settings.pages[pid].boxes }, DEFAULT_SETTINGS.pages[pid]);
+    saveSettings(); buildSettingsUI(); buildInstrumentPage(pid);
+  } else if (t.dataset.box) {
+    settings.pages[t.dataset.box].boxes[+t.dataset.i] = t.value;
+    saveSettings(); buildInstrumentPage(t.dataset.box);
+  }
+}
+$("page-einst").addEventListener("change", onSettingsChange);
+function bindNumber(id, key, lo, hi) {
+  $(id).addEventListener("change", () => {
+    settings[key] = clampInt($(id).value, lo, hi, DEFAULT_SETTINGS[key]);
+    $(id).value = settings[key];
+    saveSettings();
+  });
+}
+bindNumber("setIntWin", "intWin", 5, 120);
+bindNumber("setGlideWin", "glideWin", 5, 60);
+bindNumber("setGlideMax", "glideMax", 5, 500);
+$("setWake").addEventListener("change", () => { settings.wake = $("setWake").checked; saveSettings(); settings.wake ? requestWakeLock() : releaseWakeLock(); });
+$("setPilot").addEventListener("change", () => { settings.pilot = $("setPilot").value.slice(0, 60); saveSettings(); });
+$("setGlider").addEventListener("change", () => { settings.glider = $("setGlider").value.slice(0, 60); saveSettings(); });
+$("btnDefaults").addEventListener("click", () => {
+  if (!confirm("Alle Anzeige- und Berechnungs-Einstellungen auf Standard zurücksetzen?")) return;
+  const keep = { pilot: settings.pilot, glider: settings.glider };
+  settings = normalizeSettings(Object.assign(JSON.parse(JSON.stringify(DEFAULT_SETTINGS)), keep));
+  saveSettings(); buildSettingsUI(); buildInstrumentPage("flug"); buildInstrumentPage("info");
+});
+$("btnResetMax").addEventListener("click", () => { maxAlt = null; });
+
+/* ---------- Bildschirm wachhalten ---------- */
+let wakeLock = null, wakeState = "–";
+async function requestWakeLock() {
+  if (!settings.wake) { wakeState = "aus"; return; }
+  if (!("wakeLock" in navigator)) { wakeState = "nicht unterstützt (Browser kennt die Wake-Lock-Schnittstelle nicht)"; return; }
+  if (wakeLock || document.hidden) return;
+  try {
+    wakeLock = await navigator.wakeLock.request("screen");
+    wakeState = "aktiv";
+    wakeLock.addEventListener("release", () => { wakeLock = null; wakeState = settings.wake ? "freigegeben – wird bei Rückkehr neu angefordert" : "aus"; });
+  } catch (e) {
+    const msg = "Fehler: " + errText(e);
+    if (msg !== wakeState) log("Wake Lock fehlgeschlagen: " + errText(e), "sys");   // nicht bei jedem Tippen erneut melden
+    wakeState = msg;
+  }
+}
+function releaseWakeLock() { if (wakeLock) wakeLock.release().catch(() => {}); wakeLock = null; wakeState = "aus"; }
+document.addEventListener("visibilitychange", () => { if (!document.hidden) requestWakeLock(); });
+// Manche Browser verlangen eine Benutzeraktion → bei jedem Tippen nachfordern, solange nicht aktiv
+document.addEventListener("pointerdown", () => { if (!wakeLock) requestWakeLock(); }, { passive: true });
+
+/* =====================================================================
+   AUFZEICHNUNG (IndexedDB)
+   ===================================================================== */
+const rec = { active: false, session: null, lines: [], fixes: [], timer: null, flushing: null, interrupted: [], dbError: null };
+let dbPromise = null;
+function idb() {
+  if (!dbPromise) dbPromise = new Promise((resolve, reject) => {
+    if (!("indexedDB" in window)) { reject(new Error("IndexedDB nicht verfügbar")); return; }
+    const r = indexedDB.open("flugapp", 1);
+    r.onupgradeneeded = () => {
+      const db = r.result;
+      db.createObjectStore("sessions", { keyPath: "id" });
+      db.createObjectStore("chunks", { autoIncrement: true }).createIndex("sid", "sid");
+    };
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+    r.onblocked = () => reject(new Error("IndexedDB blockiert (anderer Tab offen?)"));
+  });
+  return dbPromise;
+}
+const reqP = (r) => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+const txDone = (tx) => new Promise((res, rej) => { tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error || new Error("Transaktion abgebrochen")); });
+
+async function recStart(resume) {
+  try {
+    const db = await idb();
+    const s = resume || { id: Date.now(), start: Date.now(), end: null, lines: 0, fixes: 0, lastT: Date.now(), version: APP_VERSION };
+    s.end = null;
+    const tx = db.transaction("sessions", "readwrite"); tx.objectStore("sessions").put(s); await txDone(tx);
+    rec.session = s; rec.active = true; rec.lines = []; rec.fixes = [];
+    rec.interrupted = rec.interrupted.filter(x => x.id !== s.id);
+    clearInterval(rec.timer); rec.timer = setInterval(recFlush, 2000);
+    log((resume ? "Aufzeichnung fortgesetzt" : "Aufzeichnung gestartet") + " (" + new Date(s.start).toLocaleString("de-CH") + ")", "sys");
+  } catch (e) { log("Aufzeichnung konnte nicht starten: " + errText(e), "err"); }
+  renderRecInfo(); refreshSessions();
+}
+async function recFlush() {
+  if (rec.flushing) return rec.flushing;
+  if (!rec.session || (!rec.lines.length && !rec.fixes.length)) return;
+  const lines = rec.lines, fixes = rec.fixes, s = rec.session;
+  rec.lines = []; rec.fixes = [];
+  rec.flushing = (async () => {
+    try {
+      const db = await idb();
+      const tx = db.transaction(["chunks", "sessions"], "readwrite");
+      tx.objectStore("chunks").add({ sid: s.id, t: Date.now(), lines, fixes });
+      const upd = Object.assign({}, s, { lines: s.lines + lines.length, fixes: s.fixes + fixes.length, lastT: Date.now() });
+      tx.objectStore("sessions").put(upd);
+      await txDone(tx);
+      Object.assign(s, upd);
+      rec.dbError = null;
+    } catch (e) {
+      rec.lines = lines.concat(rec.lines); rec.fixes = fixes.concat(rec.fixes);   // nichts verlieren, später erneut
+      if (!rec.dbError) log("Speichern der Aufzeichnung fehlgeschlagen: " + errText(e), "err");
+      rec.dbError = errText(e);
+    } finally { rec.flushing = null; }
+  })();
+  return rec.flushing;
+}
+async function recStop() {
+  clearInterval(rec.timer); rec.timer = null;
+  await recFlush();
+  if (rec.flushing) await rec.flushing;
+  const s = rec.session;
+  rec.active = false;
+  if (s) {
+    try {
+      s.end = Date.now();
+      const db = await idb();
+      const tx = db.transaction("sessions", "readwrite"); tx.objectStore("sessions").put(s); await txDone(tx);
+      log("Aufzeichnung beendet: " + s.lines + " Zeilen, " + s.fixes + " Fixes", "sys");
+    } catch (e) { log("Aufzeichnung konnte nicht abgeschlossen werden: " + errText(e), "err"); }
+  }
+  rec.session = null;
+  renderRecInfo(); refreshSessions();
+}
+async function closeInterrupted(s) {
+  try {
+    s.end = s.lastT || s.start;
+    const db = await idb();
+    const tx = db.transaction("sessions", "readwrite"); tx.objectStore("sessions").put(s); await txDone(tx);
+  } catch (e) { log("Abschliessen fehlgeschlagen: " + errText(e), "err"); }
+  rec.interrupted = rec.interrupted.filter(x => x.id !== s.id);
+  renderInterrupted(); refreshSessions();
+}
+async function loadSession(sid) {
+  const db = await idb();
+  const chunks = await reqP(db.transaction("chunks").objectStore("chunks").index("sid").getAll(sid));
+  const lines = [], fixes = [];
+  for (const c of chunks) { for (const l of c.lines) lines.push(l); for (const f of c.fixes) fixes.push(f); }
+  return { lines, fixes };
+}
+async function deleteSession(sid) {
+  const db = await idb();
+  const tx = db.transaction(["chunks", "sessions"], "readwrite");
+  tx.objectStore("sessions").delete(sid);
+  const idx = tx.objectStore("chunks").index("sid");
+  const keys = await reqP(idx.getAllKeys(sid));
+  for (const k of keys) tx.objectStore("chunks").delete(k);
+  await txDone(tx);
+}
+async function listSessions() {
+  const db = await idb();
+  const all = await reqP(db.transaction("sessions").objectStore("sessions").getAll());
+  return all.sort((a, b) => b.id - a.id);
+}
+
+// Beim Start: offene Sitzung = unterbrochene Aufzeichnung (z. B. nach Neuladen)
+async function detectInterrupted() {
+  try {
+    const all = await listSessions();
+    rec.interrupted = all.filter(s => s.end === null);
+    renderInterrupted();
+  } catch (e) { rec.dbError = errText(e); log("Speicher (IndexedDB) nicht nutzbar: " + errText(e), "err"); }
+}
+function renderInterrupted() {
+  const host = $("recInterrupted");
+  host.innerHTML = "";
+  for (const s of rec.interrupted) {
+    const d = document.createElement("div");
+    d.className = "notice"; d.style.marginBottom = "10px";
+    d.innerHTML = `<b>Unterbrochene Aufzeichnung gefunden</b><br>Start ${esc(new Date(s.start).toLocaleString("de-CH"))},
+      letzte Speicherung ${esc(new Date(s.lastT || s.start).toLocaleTimeString("de-CH"))}, ${s.lines} Zeilen.
+      <div class="row"><button class="r1">Fortsetzen</button><button class="secondary r2">Abschliessen</button></div>`;
+    d.querySelector(".r1").onclick = () => { if (rec.active) { log("Es läuft bereits eine Aufzeichnung.", "err"); return; } recStart(s).then(renderInterrupted); };
+    d.querySelector(".r2").onclick = () => closeInterrupted(s);
+    host.appendChild(d);
+  }
+}
+function renderRecInfo() {
+  const btn = $("recBtn");
+  btn.textContent = rec.active ? "Aufzeichnung stoppen" : "Aufzeichnung starten";
+  btn.classList.toggle("on", rec.active);
+  $("recState").textContent = rec.active ? "läuft" : "aus";
+  $("recState").className = rec.active ? "bad-t" : "";
+  const s = rec.session;
+  $("recDur").textContent = s ? Core.fmtDuration(Date.now() - s.start) : "–";
+  $("recLines").textContent = s ? String(s.lines + rec.lines.length) : "–";
+  $("recFixes").textContent = s ? String(s.fixes + rec.fixes.length) : "–";
+  $("recDb").textContent = rec.dbError ? "Fehler: " + rec.dbError : "IndexedDB, alle 2 s gesichert";
+  $("recDb").className = rec.dbError ? "bad-t" : "";
+}
+$("recBtn").addEventListener("click", () => {
+  if (rec.active) { if (confirm("Aufzeichnung stoppen?")) recStop(); }
+  else recStart(null);
+});
+document.addEventListener("visibilitychange", () => { if (document.hidden) recFlush(); });
+window.addEventListener("pagehide", () => { recFlush(); });
+
+async function refreshSessions() {
+  const host = $("sessList");
+  let all;
+  try { all = await listSessions(); }
+  catch (e) { host.innerHTML = `<span class="bad-t">${esc("Speicher nicht verfügbar: " + errText(e))}</span>`; return; }
+  if (!all.length) { host.innerHTML = `<span class="hint">Noch keine Aufzeichnungen.</span>`; return; }
+  host.innerHTML = "";
+  for (const s of all) {
+    const running = rec.active && rec.session && rec.session.id === s.id;
+    const d = document.createElement("div");
+    d.className = "sess";
+    const dur = Core.fmtDuration((s.end || s.lastT || s.start) - s.start);
+    d.innerHTML = `<div class="t">${esc(new Date(s.start).toLocaleString("de-CH"))}${running ? " · läuft" : s.end === null ? " · unterbrochen" : ""}</div>
+      <div class="m">Dauer ${dur} · ${s.lines} Zeilen · ${s.fixes} GPS-Fixes</div>
+      <div class="row"><button class="secondary e-txt">.txt</button><button class="secondary e-igc">.igc</button><button class="danger e-del">Löschen</button></div>`;
+    d.querySelector(".e-txt").onclick = () => exportSession(s, "txt");
+    d.querySelector(".e-igc").onclick = () => exportSession(s, "igc");
+    d.querySelector(".e-del").onclick = async () => {
+      if (running) { log("Laufende Aufzeichnung zuerst stoppen.", "err"); return; }
+      if (!confirm("Aufzeichnung vom " + new Date(s.start).toLocaleString("de-CH") + " endgültig löschen? Das kann nicht rückgängig gemacht werden.")) return;
+      try { await deleteSession(s.id); rec.interrupted = rec.interrupted.filter(x => x.id !== s.id); renderInterrupted(); }
+      catch (e) { log("Löschen fehlgeschlagen: " + errText(e), "err"); }
+      refreshSessions();
+    };
+    host.appendChild(d);
+  }
+}
+function stamp(ms) {
+  const d = new Date(ms), p = (n) => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + "-" + p(d.getHours()) + p(d.getMinutes());
+}
+async function exportSession(s, kind) {
+  try {
+    if (rec.active && rec.session && rec.session.id === s.id) await recFlush();
+    const data = await loadSession(s.id);
+    let name, text;
+    if (kind === "txt") {
+      name = "flug-" + stamp(s.start) + ".txt";
+      text = data.lines.map(l => l[1]).join("\r\n") + "\r\n";
+    } else {
+      const r = Core.buildIgc(data.fixes, { fallbackDate: Core.ddmmyyUTC(s.start), pilot: settings.pilot, glider: settings.glider, version: APP_VERSION });
+      if (!r.bCount) { log("IGC-Export: keine GPS-Positionen in dieser Aufzeichnung.", "err"); return; }
+      name = r.fileName; text = r.text;
+      log("IGC erstellt: " + r.bCount + " B-Records, GNSS-Höhe " + r.altRef + ", nicht signiert", "sys");
+    }
+    await deliverFile(name, text);
+  } catch (e) { log("Export fehlgeschlagen: " + errText(e), "err"); }
+}
+async function deliverFile(name, text) {
+  if ($("exportAsText").checked) {
+    $("exportName").textContent = name;
+    $("exportText").value = text;
+    $("exportBox").style.display = "block";
+    $("exportText").scrollIntoView({ block: "center" });
+    return;
+  }
+  const mime = name.endsWith(".igc") ? "application/octet-stream" : "text/plain";
+  const blob = new Blob([text], { type: mime });
+  let file = null;
+  try { file = new File([blob], name, { type: mime }); } catch (e) { /* ältere Browser */ }
+  if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: name }); return; }
+    catch (e) { if (e && e.name === "AbortError") return; log("Teilen fehlgeschlagen, versuche Download: " + errText(e), "sys"); }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+  log("Download angestossen: " + name + " (falls nichts passiert: Option „Export im Textfeld anzeigen“)", "sys");
+}
+$("exportClose").onclick = () => { $("exportBox").style.display = "none"; $("exportText").value = ""; };
+
+/* =====================================================================
+   OFFLINE (Service Worker)
+   ===================================================================== */
+let swState = "wird geprüft …";
+async function checkOffline() {
+  if (!("serviceWorker" in navigator)) { swState = "nicht verfügbar (dieser Browser unterstützt keinen Service Worker)"; return; }
+  try {
+    await navigator.serviceWorker.register("./sw.js");
+    const hit = ("caches" in window) && (await caches.match("./index.html", { ignoreSearch: true }) || await caches.match("./", { ignoreSearch: true }));
+    if (navigator.serviceWorker.controller && hit) swState = "aktiv – Seite lädt auch ohne Netz";
+    else if (hit) swState = "eingerichtet – ab dem nächsten Laden aktiv";
+    else swState = "wird eingerichtet …";
+  } catch (e) { swState = "Fehler: " + errText(e); log("Service Worker: " + errText(e), "err"); }
+}
+navigator.serviceWorker && navigator.serviceWorker.addEventListener("controllerchange", () => checkOffline());
+$("btnUpdate").addEventListener("click", async () => {
+  if (!confirm("Neueste Version laden? Die Seite wird neu geladen und die Bluetooth-Verbindung getrennt.")) return;
+  try {
+    if (rec.active) await recFlush();
+    if ("caches" in window) for (const k of await caches.keys()) await caches.delete(k);
+    const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
+    if (reg) await reg.update();
+  } catch (e) { log("Aktualisieren: " + errText(e), "err"); }
+  location.reload();
+});
+
+/* ---------- Globale Fehler sichtbar machen ---------- */
+window.addEventListener("error", (e) => log("JS-Fehler: " + e.message + " (" + (e.filename || "") + ":" + e.lineno + ")", "err"));
+window.addEventListener("unhandledrejection", (e) => log("Unbehandelter Fehler: " + errText(e.reason), "err"));
+
+/* ---------- Start ---------- */
+buildInstrumentPage("flug");
+buildInstrumentPage("info");
+buildSettingsUI();
+showTab(activeTab);
+detectInterrupted();
+checkOffline();
+requestWakeLock();
 
 /* ---------- Laufende Statusanzeige ---------- */
 function updateDrops() {
