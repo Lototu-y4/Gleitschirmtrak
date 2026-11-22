@@ -78,6 +78,7 @@
   <button id="btnConnect">Verbinden</button>
   <button id="btnDisconnect" class="secondary" disabled>Trennen</button>
 </div>
+<button id="btnTestNoSvc" class="secondary">Test ohne Service-Liste</button>
 <label class="chk"><input type="checkbox" id="autoReconnect" checked> Nach Abbruch automatisch neu verbinden</label>
 
 <h2>Geparste Werte</h2>
@@ -96,7 +97,7 @@
 
 <h2>Service-UUIDs (optionalServices)</h2>
 <textarea id="uuids" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
-<div class="hint">Eine UUID pro Zeile (128-Bit-Format oder kurz als 0xFFE0). Text nach # wird ignoriert. Wird automatisch gespeichert und beim nächsten „Verbinden“ verwendet.</div>
+<div class="hint">Eine UUID pro Zeile (128-Bit-Format oder kurz als 0xFFE0 – wird automatisch ausgeschrieben). Text nach # wird ignoriert. Wird automatisch gespeichert und beim nächsten „Verbinden“ verwendet.</div>
 <button class="secondary" id="btnResetUuids">Standardliste wiederherstellen</button>
 
 <script>
@@ -132,6 +133,7 @@ if (bt) {
   apiInfo.textContent = "Keine Bluetooth-Schnittstelle gefunden. Bitte die Seite im Browser „Bluefy“ öffnen oder in Safari die Erweiterung „WebBLE“ aktivieren."
     + (window.isSecureContext ? "" : " Achtung: Die Seite läuft nicht über HTTPS!");
   $("btnConnect").disabled = true;
+  $("btnTestNoSvc").disabled = true;
 }
 
 /* ---------- UUID-Feld mit localStorage ---------- */
@@ -142,18 +144,31 @@ uuidBox.value = lsGet(LS_KEY) ?? DEFAULT_UUIDS;
 uuidBox.addEventListener("input", () => lsSet(LS_KEY, uuidBox.value));
 $("btnResetUuids").onclick = () => { uuidBox.value = DEFAULT_UUIDS; lsSet(LS_KEY, DEFAULT_UUIDS); };
 
-function parseUuidList() {
+// Wandelt den Feldinhalt in eine Liste vollständiger 128-Bit-UUIDs (Kleinbuchstaben) um.
+// Kurzformen (16/32 Bit, z. B. 0xFFE0 oder FFE0) werden mit der Bluetooth-Basis-UUID
+// 0000xxxx-0000-1000-8000-00805f9b34fb ausgeschrieben. Strings statt Zahlen, weil manche
+// Polyfills/Erweiterungen nur Strings verarbeiten. Kommentare (#…), Leerzeilen und
+// Trennzeichen (Komma, Semikolon, Anführungszeichen) werden entfernt.
+const UUID128 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+function normalizeUuid(raw) {
+  let u = raw.trim().toLowerCase().replace(/^["']|["']$/g, "");
+  if (u.startsWith("0x")) u = u.slice(2);
+  if (/^[0-9a-f]{1,4}$/.test(u)) u = u.padStart(4, "0");
+  if (/^[0-9a-f]{4}$/.test(u)) u = "0000" + u;
+  if (/^[0-9a-f]{8}$/.test(u)) return u + "-0000-1000-8000-00805f9b34fb";
+  if (/^[0-9a-f]{32}$/.test(u)) u = u.replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, "$1-$2-$3-$4-$5");
+  return UUID128.test(u) ? u : null;
+}
+function parseUuidList(text = uuidBox.value, report = log) {
   const out = [];
-  for (let line of uuidBox.value.split(/\r?\n/)) {
-    line = line.replace(/#.*$/, "").trim();
-    if (!line) continue;
-    let u = line.toLowerCase();
-    if (/^0x[0-9a-f]{1,8}$/.test(u)) u = parseInt(u, 16);           // Kurzform als Zahl
-    else if (/^[0-9a-f]{4}$/.test(u)) u = parseInt(u, 16);          // „ffe0“ ohne 0x
-    else if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(u)) {
-      log("Ungültige UUID ignoriert: " + line, "err"); continue;
+  for (let line of text.split(/\r?\n/)) {
+    line = line.replace(/#.*$/, "");                 // Kommentar weg
+    for (const tok of line.split(/[\s,;]+/)) {        // mehrere pro Zeile erlaubt
+      if (!tok) continue;                             // leere Stücke ignorieren
+      const u = normalizeUuid(tok);
+      if (!u) { report("Ungültige UUID ignoriert: „" + tok + "“", "err"); continue; }
+      if (!out.includes(u)) out.push(u);
     }
-    if (!out.includes(u)) out.push(u);
   }
   return out;
 }
@@ -203,24 +218,74 @@ function propsOf(p) {
   return names.filter(n => p && p[n]).join(", ") || "–";
 }
 
+/* ---------- Fehler ausführlich darstellen ---------- */
+function errText(e) {
+  const parts = ["typeof=" + typeof e];
+  if (e !== null && typeof e === "object") {
+    parts.push("name=" + e.name, "message=" + e.message, "code=" + e.code);
+    if (e.constructor && e.constructor.name) parts.push("constructor=" + e.constructor.name);
+    let json;
+    try { json = JSON.stringify(e, Object.getOwnPropertyNames(e).filter(k => k !== "stack")); }
+    catch (x) { json = "(nicht serialisierbar: " + x + ")"; }
+    parts.push("json=" + json);
+  } else {
+    let json;
+    try { json = JSON.stringify(e); } catch (x) { json = String(e); }
+    parts.push("wert=" + json);
+  }
+  return parts.join(" | ");
+}
+
+/* ---------- Diagnose beim Start ---------- */
+function fnSource(fn) {
+  try { return String(fn).replace(/\s+/g, " ").slice(0, 80); } catch (e) { return "(nicht lesbar)"; }
+}
+async function startupDiagnostics() {
+  log("User-Agent: " + navigator.userAgent, "sys");
+  log("isSecureContext: " + window.isSecureContext + " · navigator.bluetooth: " + (navigator.bluetooth ? "ja" : "nein")
+      + " · navigator.webble: " + (navigator.webble ? "ja" : "nein"), "sys");
+  if (!bt) return;
+  const src = fnSource(bt.requestDevice);
+  const native = /\{\s*\[native code\]\s*\}/.test(src);
+  log("requestDevice ist " + (native ? "NATIV (vom Browser)" : "NICHT nativ (Polyfill/Erweiterung)") + ": " + src, "sys");
+  if (typeof bt.getAvailability === "function") {
+    try { log("getAvailability(): " + JSON.stringify(await bt.getAvailability()), "sys"); }
+    catch (e) { log("getAvailability() Fehler: " + errText(e), "err"); }
+  } else {
+    log("getAvailability() nicht vorhanden (typeof " + typeof bt.getAvailability + ")", "sys");
+  }
+}
+
 /* ---------- Verbinden ---------- */
-$("btnConnect").onclick = async () => {
-  const optionalServices = parseUuidList();
+async function doConnect(withServices) {
+  let stage = "UUID-Liste lesen";
   try {
     setConn("connecting");
-    log("Starte Gerätesuche (acceptAllDevices) mit " + optionalServices.length + " optionalServices …", "sys");
-    const dev = await bt.requestDevice({ acceptAllDevices: true, optionalServices });
+    const options = { acceptAllDevices: true };
+    if (withServices) {
+      options.optionalServices = parseUuidList();
+      log("optionalServices (" + options.optionalServices.length + "): " + JSON.stringify(options.optionalServices), "sys");
+    } else {
+      log("Test OHNE optionalServices", "sys");
+    }
+    log("requestDevice(" + JSON.stringify(options) + ") …", "sys");
+    stage = "requestDevice";
+    const dev = await bt.requestDevice(options);
+    log("Gerät gewählt: " + (dev.name || "(ohne Namen)") + " · id " + dev.id, "sys");
     if (device && device !== dev) device.removeEventListener("gattserverdisconnected", onDisconnected);
     device = dev;
     $("devName").textContent = device.name || "(ohne Namen)";
     device.addEventListener("gattserverdisconnected", onDisconnected);
     userDisconnect = false;
+    stage = "gatt.connect / Services lesen";
     await connectGatt();
   } catch (e) {
-    log("Fehler beim Verbinden: " + (e && e.message ? e.message : e), "err");
+    log("Fehler beim Verbinden (Schritt: " + stage + "): " + errText(e), "err");
     setConn(device && device.gatt && device.gatt.connected ? "connected" : "none");
   }
-};
+}
+$("btnConnect").onclick = () => doConnect(true);
+$("btnTestNoSvc").onclick = () => doConnect(false);
 
 $("btnDisconnect").onclick = () => {
   userDisconnect = true;
@@ -257,7 +322,7 @@ async function reconnect(attempt) {
   if (userDisconnect || (device.gatt && device.gatt.connected)) return;
   try { await connectGatt(); }
   catch (e) {
-    log("Neuverbinden fehlgeschlagen: " + (e && e.message ? e.message : e), "err");
+    log("Neuverbinden fehlgeschlagen: " + errText(e), "err");
     setConn("disconnected");
     reconnect(attempt + 1);
   }
@@ -270,9 +335,9 @@ async function discover() {
   let services = [];
   try { services = await server.getPrimaryServices(); }
   catch (e) {
-    host.innerHTML = `<div class="box err">Keine Services erreichbar: ${esc(String(e.message || e))}<br>
+    host.innerHTML = `<div class="box err">Keine Services erreichbar: ${esc(errText(e))}<br>
       Tipp: Die Service-UUID des Geräts muss in der Liste unten stehen.</div>`;
-    log("getPrimaryServices fehlgeschlagen: " + (e.message || e), "err");
+    log("getPrimaryServices fehlgeschlagen: " + errText(e), "err");
     return;
   }
   log(services.length + " Service(s) gefunden.", "sys");
@@ -285,7 +350,7 @@ async function discover() {
     host.appendChild(box);
     let chars = [];
     try { chars = await svc.getCharacteristics(); }
-    catch (e) { box.insertAdjacentHTML("beforeend", `<div class="err">Characteristics nicht lesbar: ${esc(String(e.message || e))}</div>`); continue; }
+    catch (e) { box.insertAdjacentHTML("beforeend", `<div class="err">Characteristics nicht lesbar: ${esc(errText(e))}</div>`); continue; }
 
     for (const ch of chars) {
       const cdiv = document.createElement("div");
@@ -313,8 +378,8 @@ async function discover() {
           stat.el.textContent = "abonniert – noch keine Daten";
           log("Notifications abonniert: " + ch.uuid, "sys");
         } catch (e) {
-          stat.el.textContent = "Abonnieren fehlgeschlagen: " + (e.message || e);
-          log("startNotifications fehlgeschlagen (" + ch.uuid + "): " + (e.message || e), "err");
+          stat.el.textContent = "Abonnieren fehlgeschlagen: " + errText(e);
+          log("startNotifications fehlgeschlagen (" + ch.uuid + "): " + errText(e), "err");
         }
       }
     }
@@ -473,6 +538,8 @@ setInterval(() => {
   const rate = rateWindow.length / 5;   // gleitender Mittelwert über 5 s
   $("msgs").textContent = msgCount + " · " + rate.toFixed(1) + "/s";
 }, 200);
+
+startupDiagnostics();
 
 // Hinweis: iOS pausiert Seiten im Hintergrund – Abbrüche dann nicht dem Gerät anlasten.
 document.addEventListener("visibilitychange", () => {
