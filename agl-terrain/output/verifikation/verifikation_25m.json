@@ -1,0 +1,244 @@
+{
+  "ordner": "output\\tiles_25m",
+  "aufloesung_m": 25.0,
+  "pruefungen": [
+    {
+      "name": "A JS=Python (bilinear)",
+      "ok": true,
+      "detail": "300 Zufallspunkte, 273 mit Wert, max. Abweichung 0.0000 cm (Toleranz 0.1 cm), null-Unterschiede: 0, null (py/js): 27/27",
+      "uebersprungen": false
+    },
+    {
+      "name": "A JS=Python (nearest)",
+      "ok": true,
+      "detail": "300 Zufallspunkte, 273 mit Wert, max. Abweichung 0.0000 cm (Toleranz 0.1 cm), null-Unterschiede: 0, null (py/js): 27/27",
+      "uebersprungen": false
+    },
+    {
+      "name": "B Gipfel Dufourspitze",
+      "ok": true,
+      "detail": "publiziert 4634 | Roh-Max(150 m) 4634.2 | Gitter-Max(175 m) 4634.2 | am Punkt: bilinear 4627.824389120004, nächster 4634.2",
+      "uebersprungen": false
+    },
+    {
+      "name": "B Gipfel Matterhorn",
+      "ok": true,
+      "detail": "publiziert 4478 | Roh-Max(150 m) 4477.0 | Gitter-Max(175 m) 4477.1 | am Punkt: bilinear 4475.985806800162, nächster 4477.1",
+      "uebersprungen": false
+    },
+    {
+      "name": "B Gipfel Weisshorn",
+      "ok": true,
+      "detail": "publiziert 4506 | Roh-Max(150 m) 4504.0 | Gitter-Max(175 m) 4504.0 | am Punkt: bilinear 4492.694032799961, nächster 4492.3",
+      "uebersprungen": false
+    },
+    {
+      "name": "B Gipfel Finsteraarhorn",
+      "ok": true,
+      "detail": "publiziert 4274 | Roh-Max(150 m) 4274.2 | Gitter-Max(175 m) 4274.3 | am Punkt: bilinear 4269.618934079922, nächster 4274.3",
+      "uebersprungen": false
+    },
+    {
+      "name": "B Gipfel Jungfrau",
+      "ok": true,
+      "detail": "publiziert 4158 | Roh-Max(150 m) 4157.1 | Gitter-Max(175 m) 4157.2 | am Punkt: bilinear 4152.14439999992, nächster 4157.2",
+      "uebersprungen": false
+    },
+    {
+      "name": "B Gipfel Piz Bernina",
+      "ok": true,
+      "detail": "publiziert 4049 | Roh-Max(150 m) 4047.1 | Gitter-Max(175 m) 4047.2 | am Punkt: bilinear 4037.1195000000102, nächster 4047.2",
+      "uebersprungen": false
+    },
+    {
+      "name": "B Gipfel Säntis",
+      "ok": true,
+      "detail": "publiziert 2502 | Roh-Max(150 m) 2501.8 | Gitter-Max(175 m) 2501.8 | am Punkt: bilinear 2501.628800000004, nächster 2501.8",
+      "uebersprungen": false
+    },
+    {
+      "name": "B See Genfersee",
+      "ok": true,
+      "detail": "Nennspiegel ~372.0 | häufigster Wert 372.2 (1559 von 1600 Rasterpunkten) | Toleranz ±1.0 m",
+      "uebersprungen": false
+    },
+    {
+      "name": "B See Bodensee (Obersee)",
+      "ok": true,
+      "detail": "Nennspiegel ~395.6 | häufigster Wert 395.6 (809 von 1600 Rasterpunkten) | Toleranz ±1.0 m",
+      "uebersprungen": false
+    },
+    {
+      "name": "B See Zürichsee",
+      "ok": true,
+      "detail": "Nennspiegel ~406.0 | häufigster Wert 406.0 (341 von 1600 Rasterpunkten) | Toleranz ±1.0 m",
+      "uebersprungen": false
+    },
+    {
+      "name": "B See Neuenburgersee",
+      "ok": true,
+      "detail": "Nennspiegel ~429.4 | häufigster Wert 429.3 (969 von 1600 Rasterpunkten) | Toleranz ±1.0 m",
+      "uebersprungen": false
+    },
+    {
+      "name": "B See Vierwaldstättersee",
+      "ok": true,
+      "detail": "Nennspiegel ~433.6 | häufigster Wert 433.6 (687 von 1600 Rasterpunkten) | Toleranz ±1.0 m",
+      "uebersprungen": false
+    },
+    {
+      "name": "B See Lago Maggiore",
+      "ok": true,
+      "detail": "Nennspiegel ~193.5 | häufigster Wert 193.5 (387 von 1600 Rasterpunkten) | Toleranz ±1.0 m",
+      "uebersprungen": false
+    },
+    {
+      "name": "B See Thunersee",
+      "ok": true,
+      "detail": "Nennspiegel ~557.8 | häufigster Wert 557.7 (451 von 1600 Rasterpunkten) | Toleranz ±1.0 m",
+      "uebersprungen": false
+    },
+    {
+      "name": "C Randpunkte benachbarter Kacheln identisch",
+      "ok": true,
+      "detail": "2205 Nähte geprüft, 0 mit Abweichung",
+      "uebersprungen": false
+    },
+    {
+      "name": "D Gitter(bilinear) minus Rohdaten(bilinear)",
+      "ok": true,
+      "detail": "n=1384: Mittel +6.52 m, Median +4.37 m, 1%-Quantil -55.7 m, 99%-Quantil +74.8 m (positiv = Raster höher als Roh – erwartet bei Max-Resampling)",
+      "uebersprungen": false
+    }
+  ],
+  "gipfel": [
+    {
+      "name": "Dufourspitze",
+      "publiziert": 4634,
+      "roh_max_150m": 4634.17138671875,
+      "gitter_max_175m": 4634.2,
+      "am_punkt_bilinear": 4627.824389120004,
+      "am_punkt_naechster": 4634.2
+    },
+    {
+      "name": "Matterhorn",
+      "publiziert": 4478,
+      "roh_max_150m": 4477.041015625,
+      "gitter_max_175m": 4477.1,
+      "am_punkt_bilinear": 4475.985806800162,
+      "am_punkt_naechster": 4477.1
+    },
+    {
+      "name": "Weisshorn",
+      "publiziert": 4506,
+      "roh_max_150m": 4503.99755859375,
+      "gitter_max_175m": 4504.0,
+      "am_punkt_bilinear": 4492.694032799961,
+      "am_punkt_naechster": 4492.3
+    },
+    {
+      "name": "Finsteraarhorn",
+      "publiziert": 4274,
+      "roh_max_150m": 4274.212890625,
+      "gitter_max_175m": 4274.3,
+      "am_punkt_bilinear": 4269.618934079922,
+      "am_punkt_naechster": 4274.3
+    },
+    {
+      "name": "Jungfrau",
+      "publiziert": 4158,
+      "roh_max_150m": 4157.10595703125,
+      "gitter_max_175m": 4157.2,
+      "am_punkt_bilinear": 4152.14439999992,
+      "am_punkt_naechster": 4157.2
+    },
+    {
+      "name": "Piz Bernina",
+      "publiziert": 4049,
+      "roh_max_150m": 4047.100830078125,
+      "gitter_max_175m": 4047.2,
+      "am_punkt_bilinear": 4037.1195000000102,
+      "am_punkt_naechster": 4047.2
+    },
+    {
+      "name": "Säntis",
+      "publiziert": 2502,
+      "roh_max_150m": 2501.79248046875,
+      "gitter_max_175m": 2501.8,
+      "am_punkt_bilinear": 2501.628800000004,
+      "am_punkt_naechster": 2501.8
+    }
+  ],
+  "seen": [
+    {
+      "name": "Genfersee",
+      "nennwert": 372.0,
+      "modus": 372.2,
+      "punkte_im_see": 1559
+    },
+    {
+      "name": "Bodensee (Obersee)",
+      "nennwert": 395.6,
+      "modus": 395.6,
+      "punkte_im_see": 809
+    },
+    {
+      "name": "Zürichsee",
+      "nennwert": 406.0,
+      "modus": 406.0,
+      "punkte_im_see": 341
+    },
+    {
+      "name": "Neuenburgersee",
+      "nennwert": 429.4,
+      "modus": 429.3,
+      "punkte_im_see": 969
+    },
+    {
+      "name": "Vierwaldstättersee",
+      "nennwert": 433.6,
+      "modus": 433.6,
+      "punkte_im_see": 687
+    },
+    {
+      "name": "Lago Maggiore",
+      "nennwert": 193.5,
+      "modus": 193.5,
+      "punkte_im_see": 387
+    },
+    {
+      "name": "Thunersee",
+      "nennwert": 557.8,
+      "modus": 557.7,
+      "punkte_im_see": 451
+    }
+  ],
+  "naehte": {
+    "geprueft": 2205,
+    "fehler": 0
+  },
+  "vs_rohdaten": {
+    "bilinear": {
+      "n": 1384,
+      "mittel": 6.5156598782750415,
+      "median": 4.365117090313561,
+      "p01": -55.74870751717005,
+      "p05": -3.962955733749214,
+      "p95": 23.578210384288727,
+      "p99": 74.81334260047223,
+      "min": -134.47457124419634,
+      "max": 160.89095462782984
+    },
+    "naechster": {
+      "n": 1384,
+      "mittel": 6.669367270516892,
+      "median": 3.7881277159204387,
+      "p01": -59.16100377105087,
+      "p05": -3.920217249579644,
+      "p95": 26.19010331839354,
+      "p99": 78.24955216064858,
+      "min": -141.83567480680767,
+      "max": 169.87596711028027
+    }
+  }
+}

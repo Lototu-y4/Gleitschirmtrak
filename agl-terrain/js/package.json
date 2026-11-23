@@ -1,0 +1,6 @@
+{
+  "name": "swisstopo-terrain-js",
+  "private": true,
+  "type": "module",
+  "description": "terrain.js – Geländehöhe aus WGS84-Kacheln (swisstopo). Keine Abhängigkeiten."
+}

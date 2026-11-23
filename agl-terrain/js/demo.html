@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>terrain.js – Demo</title>
+<style>
+  body { font: 16px system-ui, sans-serif; margin: 16px; max-width: 34rem; }
+  input, button { font: inherit; padding: .4rem; margin: .2rem 0; width: 100%; box-sizing: border-box; }
+  pre { background: #eee; padding: .6rem; white-space: pre-wrap; }
+  small { color: #555; }
+</style>
+</head>
+<body>
+<h1>Geländehöhe (swisstopo)</h1>
+<p><small>Quelle: Federal Office of Topography swisstopo. Modell ohne Bäume/Gebäude – Näherung, kein Sicherheitsinstrument.</small></p>
+<label>Kachel-Ordner <input id="basis" value="../output/tiles_25m/"></label>
+<label>Breite (lat) <input id="lat" value="45.93694"></label>
+<label>Länge (lon) <input id="lon" value="7.86694"></label>
+<button id="go">Höhe abfragen</button>
+<pre id="out">…</pre>
+<script type="module">
+  import { ladeIndex, Gelaende } from "./terrain.js";
+  const out = document.getElementById("out");
+  document.getElementById("go").onclick = async () => {
+    try {
+      const basis = document.getElementById("basis").value;
+      const lat = parseFloat(document.getElementById("lat").value);
+      const lon = parseFloat(document.getElementById("lon").value);
+      const t0 = performance.now();
+      const g = new Gelaende(await ladeIndex(basis), basis);
+      const h = await g.hoeheAnAsync(lat, lon);
+      const hn = g.hoeheAn(lat, lon, false);
+      out.textContent = `Höhe (bilinear): ${h === null ? "null (keine Daten)" : h.toFixed(2) + " m"}\n` +
+        `Höhe (nächster Punkt): ${hn === null ? "null" : hn.toFixed(1) + " m"}\n` +
+        `DecompressionStream: ${typeof DecompressionStream !== "undefined"}\n` +
+        `Zeit inkl. Laden: ${(performance.now() - t0).toFixed(0)} ms\n` +
+        `Quelle: ${g.index.quelle}`;
+    } catch (e) { out.textContent = "Fehler: " + e.message; }
+  };
+</script>
+</body>
+</html>

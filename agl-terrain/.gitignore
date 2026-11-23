@@ -1,0 +1,9 @@
+# Rohdaten und grosse/erzeugte Dateien nicht ins Git
+raw/
+igc/
+output/tiles_*/
+output/verifikation/_tmp/
+.venv/
+__pycache__/
+.pytest_cache/
+*.part

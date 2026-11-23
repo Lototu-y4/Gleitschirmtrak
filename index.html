@@ -213,6 +213,24 @@
     <h2>Sitzung</h2>
     <button class="secondary" id="btnResetMax">Max. Höhe zurücksetzen</button>
 
+    <h2>Gelände (Höhe über Grund)</h2>
+    <div class="card"><div class="kv">
+      <span>Geländedaten</span><b id="terrState">–</b>
+      <span>Offline gespeichert</span><b id="terrStored">–</b>
+      <span>Download</span><b id="terrJob">–</b>
+    </div></div>
+    <div class="field"><span>Radius um den Mittelpunkt (5–100 km)</span><input id="setTerrRadius" type="number" inputmode="numeric" min="5" max="100" step="1"></div>
+    <div class="field"><span>Mittelpunkt (Breite, Länge; leer = aktuelle Position)</span><input id="terrCenter" style="width:45%" placeholder="46.68, 7.86" autocomplete="off" inputmode="decimal"></div>
+    <div class="row">
+      <button class="secondary" id="btnTerrLoad">Gebiet offline speichern</button>
+      <button class="secondary" id="btnTerrStop" disabled>Abbrechen</button>
+    </div>
+    <button class="danger" id="btnTerrClear">Offline-Geländedaten löschen</button>
+    <div class="hint" style="margin-top:6px">„Höhe über Grund“ = GPS-Höhe über Meer minus Geländehöhe an der aktuellen Position (Raster 25 m, Schweiz mit ca. 10 km Rand).
+      Mit Netz lädt die App die Kacheln um die Position während des Flugs selbst nach. Ohne Netz geht es nur mit vorher gespeichertem Gebiet, deshalb vor dem Flug „Gebiet offline speichern“ (30 km Radius ≈ 12 MB, 50 km ≈ 30 MB, 100 km ≈ 106 MB).</div>
+    <div class="notice" style="margin-top:8px">Näherung: Das Geländemodell enthält keine Bäume, Gebäude, Leitungen oder Seilbahnen, und die GPS-Höhe schwankt um mehrere Meter. Nicht als einziges Mittel für den Bodenabstand verwenden.</div>
+    <div class="hint" style="margin-top:6px">Quelle Geländedaten: Bundesamt für Landestopografie swisstopo (swissALTIRegio)</div>
+
     <h2>Offline</h2>
     <div class="card"><div class="kv">
       <span>Offline-Cache</span><b id="swState">–</b>
@@ -598,9 +616,67 @@ const Core = (() => {
     return pad(d.getUTCDate(), 2) + pad(d.getUTCMonth() + 1, 2) + pad(d.getUTCFullYear() % 100, 2);
   }
 
+  /* ---------- Gelände (swisstopo swissALTIRegio, Kacheln aus agl-terrain/) ----------
+     WGS84-Raster mit Knoten-Registrierung: Kachel = tile_deg × tile_deg, (TR+1) × (TC+1) Punkte,
+     uint16 in Dezimetern, Zeile 0 = Nordrand, 65535 = keine Daten. Randpunkte stehen in beiden
+     Nachbarkacheln, deshalb braucht jede Abfrage genau EINE Kachel.
+     Gleiche Formeln und gleiche Rechenreihenfolge wie agl-terrain/scripts/agl/terrain.py. */
+  function terrainGrid(index) {
+    const g = index.grid;
+    return { latTop: g.lat_top, lonLeft: g.lon_left, tileDeg: g.tile_deg, tr: g.cells_per_tile_lat, tc: g.cells_per_tile_lon,
+             dlat: g.tile_deg / g.cells_per_tile_lat, dlon: g.tile_deg / g.cells_per_tile_lon,
+             nodata: index.nodata === undefined ? 65535 : index.nodata };
+  }
+  // Welche Kachel und welche Zelle? interpol=false → nächster Gitterpunkt statt bilinear.
+  function terrainLocate(grid, lat, lon, interpol) {
+    if (lat === null || lon === null) return null;
+    const rf = (grid.latTop - lat) / grid.dlat, cf = (lon - grid.lonLeft) / grid.dlon;
+    if (!Number.isFinite(rf) || !Number.isFinite(cf)) return null;
+    if (interpol === false) {
+      const R = Math.floor(rf + 0.5), C = Math.floor(cf + 0.5);
+      const ty = Math.floor(R / grid.tr), tx = Math.floor(C / grid.tc);
+      return { key: ty + "_" + tx, ty, tx, r: R - ty * grid.tr, c: C - tx * grid.tc, nearest: true };
+    }
+    const R0 = Math.floor(rf), C0 = Math.floor(cf);
+    const ty = Math.floor(R0 / grid.tr), tx = Math.floor(C0 / grid.tc);   // auch für negative Werte (Kachel 0_-1)
+    return { key: ty + "_" + tx, ty, tx, r: R0 - ty * grid.tr, c: C0 - tx * grid.tc, fr: rf - R0, fc: cf - C0, nearest: false };
+  }
+  // Höhe in Metern aus einer entpackten Kachel (Uint16Array) oder null (keine Daten).
+  function terrainSample(grid, tile, loc) {
+    const W = grid.tc + 1, i = loc.r * W + loc.c, nd = grid.nodata;
+    if (loc.nearest) { const v = tile[i]; return v === nd ? null : v / 10; }
+    const v00 = tile[i], v01 = tile[i + 1], v10 = tile[i + W], v11 = tile[i + W + 1];
+    if (v00 === nd || v01 === nd || v10 === nd || v11 === nd) return null;
+    const fr = loc.fr, fc = loc.fc;
+    return ((1 - fr) * ((1 - fc) * v00 + fc * v01) + fr * ((1 - fc) * v10 + fc * v11)) / 10;
+  }
+  // Schlüssel aller Kacheln, die ein Quadrat von ±radiusM um (lat, lon) berühren.
+  function terrainTilesAround(grid, lat, lon, radiusM) {
+    const dLat = radiusM / 111195, dLon = radiusM / (111195 * Math.max(0.1, Math.cos(lat * Math.PI / 180)));
+    const ty0 = Math.floor((grid.latTop - (lat + dLat)) / grid.tileDeg), ty1 = Math.floor((grid.latTop - (lat - dLat)) / grid.tileDeg);
+    const tx0 = Math.floor((lon - dLon - grid.lonLeft) / grid.tileDeg), tx1 = Math.floor((lon + dLon - grid.lonLeft) / grid.tileDeg);
+    const keys = [];
+    for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) keys.push(ty + "_" + tx);
+    return keys;
+  }
+  // gzip erkennt man an den ersten zwei Bytes 1f 8b (fehlen sie, hat der Server schon entpackt).
+  function isGzip(u8) { return !!u8 && u8.length >= 2 && u8[0] === 0x1f && u8[1] === 0x8b; }
+  // Höhe über Grund = GPS-Höhe über Meer (GGA Feld 9, NICHT ellipsoidisch) − Geländehöhe
+  function aglOf(gpsAlt, ground) {
+    if (gpsAlt === null || ground === null || !Number.isFinite(gpsAlt) || !Number.isFinite(ground)) return null;
+    return gpsAlt - ground;
+  }
+  // Ganze Meter, negatives Vorzeichen als echtes Minuszeichen
+  function fmtMeters(v) {
+    if (v === null || v === undefined || !Number.isFinite(v)) return null;
+    const r = Math.round(v);
+    return r < 0 ? MINUS + Math.abs(r) : String(r === 0 ? 0 : r);
+  }
+
   return { KN_TO_MS, KN_TO_KMH, MINUS, nmeaChecksum, checkLine, num, parseLat, parseLon, parseTime, parseDate,
            parseGGA, parseRMC, parseLXWP0, parseSentence, ggaHasFix, pushSample, windowMean, glideRatio, nextMax,
-           fmtSigned, fmtGlide, compass8, fmtDuration, igcLat, igcLon, igcAlt, igcText, buildIgc, ddmmyyUTC };
+           fmtSigned, fmtGlide, compass8, fmtDuration, igcLat, igcLon, igcAlt, igcText, buildIgc, ddmmyyUTC,
+           terrainGrid, terrainLocate, terrainSample, terrainTilesAround, isGzip, aglOf, fmtMeters };
 })();
 /*CORE-END*/
 </script>
@@ -953,7 +1029,7 @@ function handleLine(line, key) {
 /* =====================================================================
    FLUG-ANZEIGE
    ===================================================================== */
-const APP_VERSION = "2026-11-23.1";
+const APP_VERSION = "2026-11-23.2";
 const STALE_MS = 2000;          // ohne neue Daten länger als das → „keine Daten“
 const HOLD_MS = 2000;           // ein Messwert gilt höchstens so lange (Lücken zählen nicht)
 const MIN_COVERAGE = 0.9;       // Fenster gilt als gefüllt ab 90 % Abdeckung
@@ -1001,6 +1077,7 @@ const INSTRUMENTS = {
   climbAvg: { name: "Integr. Steigen", long: "Integriertes Steigen", unit: "m/s" },
   altGps:   { name: "GPS-Höhe", long: "GPS-Höhe", unit: "m" },
   altMax:   { name: "Max. Höhe", long: "Max. Höhe (GPS)", unit: "m" },
+  agl:      { name: "Höhe über Grund", long: "Höhe über Grund (GPS-Höhe − Gelände)", unit: "m" },
   speed:    { name: "Geschw. über Grund", long: "Geschwindigkeit über Grund", unit: "km/h" },
   glide:    { name: "Gleitzahl über Grund", long: "Gleitzahl über Grund", unit: "" },
   course:   { name: "Kurs über Grund", long: "Kurs über Grund", unit: "°" },
@@ -1010,10 +1087,10 @@ const INSTRUMENTS = {
   conn:     { name: "Verbindung", long: "Verbindungsstatus und Datenrate", unit: "", cls: "text" },
 };
 const DEFAULT_SETTINGS = {
-  intWin: 16, glideWin: 10, glideMax: 60, wake: true, pilot: "", glider: "",
+  intWin: 16, glideWin: 10, glideMax: 60, wake: true, pilot: "", glider: "", terrRadius: 30,
   pages: {
     flug: { grid: "2x3", boxes: ["climb", "climbAvg", "altGps", "speed", "glide", "course"] },
-    info: { grid: "2x2", boxes: ["gpsQual", "altMax", "clock", "conn"] },
+    info: { grid: "2x3", boxes: ["agl", "gpsQual", "altMax", "recTime", "clock", "conn"] },
   },
 };
 const SET_KEY = "flugapp.settings.v1";
@@ -1041,6 +1118,7 @@ function normalizeSettings(s) {
     wake: s.wake === undefined ? d.wake : !!s.wake,
     pilot: typeof s.pilot === "string" ? s.pilot.slice(0, 60) : "",
     glider: typeof s.glider === "string" ? s.glider.slice(0, 60) : "",
+    terrRadius: clampInt(s.terrRadius, 5, 100, d.terrRadius),
     pages: { flug: normalizePage(s.pages && s.pages.flug, d.pages.flug), info: normalizePage(s.pages && s.pages.info, d.pages.info) },
   };
 }
@@ -1076,6 +1154,15 @@ function computeInstrument(id, now, noData) {
     }
     case "altMax":
       return { text: maxAlt === null ? DASH : String(Math.round(maxAlt)), sub: "seit App-Start", stale: noData };
+    case "agl": {
+      const g = cur.gga, stale = noData || !freshOf("gga", now);
+      if (!g) return { text: DASH, sub: "keine Daten", stale: true };
+      if (!Core.ggaHasFix(g)) return { text: DASH, sub: "kein GPS-Fix", stale, tone: "bad" };
+      if (g.alt === null) return { text: DASH, sub: "keine GPS-Höhe", stale };
+      const t = terrainAt(g.lat, g.lon);
+      if (t.h === null) return { text: DASH, sub: t.msg, stale };
+      return { text: Core.fmtMeters(Core.aglOf(g.alt, t.h)), sub: "Gelände " + Math.round(t.h) + " m", stale };
+    }
     case "speed": {
       const r = cur.rmc, stale = noData || !freshOf("rmc", now);
       if (!r) return { text: DASH, sub: "keine Daten", stale: true };
@@ -1256,7 +1343,9 @@ function render() {
     renderDebugSources(now);
     $("dbgWake").textContent = wakeState; $("dbgSw").textContent = swState; $("dbgVer").textContent = APP_VERSION;
   }
-  if (activeTab === "einst") { $("wakeState").textContent = wakeState; $("swState").textContent = swState; }
+  if (activeTab === "einst") { $("wakeState").textContent = wakeState; $("swState").textContent = swState; renderTerrainSettings(); }
+  // Gelände um die aktuelle Position bereithalten, auch wenn der Kasten gerade nicht sichtbar ist
+  if (cur.gga && Core.ggaHasFix(cur.gga) && now - tLast.gga <= STALE_MS) terrainAt(cur.gga.lat, cur.gga.lon);
 }
 
 function setText(id, t) { const el = $(id); if (el.textContent !== t) el.textContent = t; }
@@ -1291,6 +1380,7 @@ function renderDebugSources(now) {
     ["LXWP0 · Vario", cur.vario === null ? "–" : cur.vario.toFixed(2) + " m/s", age("vario")],
     ["GGA · GPS", g ? "Fix " + v(g.quality) + " · " + v(g.sats) + " Sat · HDOP " + v(g.hdop) + " · " + v(g.alt, " m") : "–", age("gga")],
     ["RMC · GPS", r ? (r.valid ? "A (gültig)" : "V (ungültig)") + " · " + v(r.speedKn, " kn") + " · " + v(r.course, "°") : "–", age("rmc")],
+    ["Gelände", terrainDebugText(), ""],
     ["Puffer", "Vario " + varioBuf.length + " · Geschw. " + speedBuf.length, ""],
     ["Zeilenrate", lineRate(now).toFixed(1) + " /s", ""],
   ];
@@ -1308,6 +1398,7 @@ function buildSettingsUI() {
   $("setWake").checked = settings.wake;
   $("setPilot").value = settings.pilot;
   $("setGlider").value = settings.glider;
+  $("setTerrRadius").value = settings.terrRadius;
   $("appVer").textContent = APP_VERSION;
   for (const pid of ["flug", "info"]) {
     const host = $("cfg-" + pid);
@@ -1345,6 +1436,7 @@ function bindNumber(id, key, lo, hi) {
 bindNumber("setIntWin", "intWin", 5, 120);
 bindNumber("setGlideWin", "glideWin", 5, 60);
 bindNumber("setGlideMax", "glideMax", 5, 500);
+bindNumber("setTerrRadius", "terrRadius", 5, 100);
 $("setWake").addEventListener("change", () => { settings.wake = $("setWake").checked; saveSettings(); settings.wake ? requestWakeLock() : releaseWakeLock(); });
 $("setPilot").addEventListener("change", () => { settings.pilot = $("setPilot").value.slice(0, 60); saveSettings(); });
 $("setGlider").addEventListener("change", () => { settings.glider = $("setGlider").value.slice(0, 60); saveSettings(); });
@@ -1592,6 +1684,272 @@ async function deliverFile(name, text) {
 $("exportClose").onclick = () => { $("exportBox").style.display = "none"; $("exportText").value = ""; };
 
 /* =====================================================================
+   GELÄNDE / HÖHE ÜBER GRUND
+   Kacheln liegen unter ./terrain/ (index.json + tiles/{ty}_{tx}.u16.gz, erzeugt mit agl-terrain/).
+   Reihenfolge beim Laden einer Kachel: Speicher → IndexedDB (offline) → Netz (wird dann gespeichert).
+   Eigene IndexedDB-Datenbank, damit „Neueste Version laden“ und der Service Worker sie nicht löschen.
+   ===================================================================== */
+const TERRAIN_BASE = "./terrain/";
+const TERRAIN_MEM_MAX = 12;                // entpackte Kacheln im Speicher (je ~270 kB)
+const TERRAIN_RETRY_MS = 30000;            // fehlgeschlagene Kachel / fehlender Index: so lange warten bis zum nächsten Versuch
+const terr = {
+  state: "init",          // init | ok | noindex | nodecomp
+  index: null, grid: null, indexSrc: "", initAt: 0, initRunning: false,
+  mem: new Map(),         // key -> Uint16Array (älteste zuerst)
+  pending: new Map(),     // key -> Promise
+  failed: new Map(),      // key -> {at, msg}
+  stored: new Map(),      // key -> Bytes in IndexedDB
+  lastKey: null, lastH: null,
+  job: null,              // laufender Gebiets-Download
+  jobMsg: "–",
+};
+
+let tdbPromise = null;
+function tdb() {
+  if (!tdbPromise) tdbPromise = new Promise((resolve, reject) => {
+    if (!("indexedDB" in window)) { reject(new Error("IndexedDB nicht verfügbar")); return; }
+    const r = indexedDB.open("flugapp-terrain", 1);
+    r.onupgradeneeded = () => { r.result.createObjectStore("tiles"); r.result.createObjectStore("meta"); };
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
+  tdbPromise.catch(() => { tdbPromise = null; });
+  return tdbPromise;
+}
+async function tdbReq(store, mode, fn) {
+  const db = await tdb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, mode);
+    const req = fn(tx.objectStore(store));
+    let result;
+    if (req) req.onsuccess = () => { result = req.result; };
+    tx.oncomplete = () => resolve(result);
+    tx.onerror = () => reject(tx.error || (req && req.error));
+    tx.onabort = () => reject(tx.error || new Error("Speichern abgebrochen (Speicher voll?)"));
+  });
+}
+const tdbGet = (store, key) => tdbReq(store, "readonly", s => s.get(key));
+const tdbPut = (store, key, val) => tdbReq(store, "readwrite", s => s.put(val, key));
+
+async function fetchTimeout(url, ms) {
+  const ac = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timer = setTimeout(() => ac && ac.abort(), ms);
+  try { return await fetch(url, { cache: "no-cache", signal: ac ? ac.signal : undefined }); }
+  finally { clearTimeout(timer); }
+}
+
+async function terrainInit() {
+  if (terr.initRunning) return;
+  terr.initRunning = true; terr.initAt = performance.now();
+  try {
+    if (typeof DecompressionStream === "undefined") { terr.state = "nodecomp"; return; }
+    let idx = null;
+    try {
+      const res = await fetchTimeout(TERRAIN_BASE + "index.json", 8000);
+      if (res.ok) { idx = await res.json(); terr.indexSrc = "Netz"; }
+    } catch (e) { /* offline → gespeicherten Index nehmen */ }
+    if (idx && idx.grid && idx.kacheln) tdbPut("meta", "index", idx).catch(e => log("Gelände-Index speichern: " + errText(e), "err"));
+    else {
+      try { idx = await tdbGet("meta", "index"); terr.indexSrc = "Offline-Speicher"; } catch (e) { idx = null; }
+    }
+    if (!idx || !idx.grid || !idx.kacheln) { terr.state = "noindex"; return; }
+    terr.index = idx; terr.grid = Core.terrainGrid(idx); terr.state = "ok";
+    await terrainRefreshStored();
+  } finally { terr.initRunning = false; }
+}
+
+// Gespeicherte Kacheln zählen (nur Schlüssel und Grösse, ohne die Daten zu lesen)
+async function terrainRefreshStored() {
+  try {
+    const db = await tdb();
+    await new Promise((resolve, reject) => {
+      const m = new Map();
+      const req = db.transaction("tiles").objectStore("tiles").openCursor();
+      req.onsuccess = () => {
+        const c = req.result;
+        if (!c) { terr.stored = m; resolve(); return; }
+        m.set(String(c.key), c.value && c.value.byteLength || 0);
+        c.continue();
+      };
+      req.onerror = () => reject(req.error);
+    });
+  } catch (e) { /* ohne IndexedDB: nur Speicher + Netz */ }
+}
+
+// Passt eine gespeicherte Kachel zum aktuellen Index? (sonst wurde sie neu erzeugt → neu laden)
+function terrainBytesOk(key, buf) {
+  if (!buf || !buf.byteLength) return false;
+  const g = terr.grid, raw = (g.tr + 1) * (g.tc + 1) * 2;
+  return buf.byteLength === terr.index.kacheln[key] || buf.byteLength === raw;
+}
+async function terrainFetchTile(key) {
+  const res = await fetchTimeout(TERRAIN_BASE + "tiles/" + key + ".u16.gz", 20000);
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const buf = await res.arrayBuffer();
+  if (!terrainBytesOk(key, buf)) throw new Error("unerwartete Grösse " + buf.byteLength + " Bytes");
+  return buf;
+}
+async function terrainDecode(buf) {
+  let u8 = new Uint8Array(buf);
+  if (Core.isGzip(u8)) {
+    const out = await new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer();
+    u8 = new Uint8Array(out);
+  }
+  const g = terr.grid, n = (g.tr + 1) * (g.tc + 1);
+  if (u8.byteLength !== n * 2) throw new Error("Kachel hat " + u8.byteLength + " statt " + n * 2 + " Bytes");
+  const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength), arr = new Uint16Array(n);
+  for (let i = 0; i < n; i++) arr[i] = dv.getUint16(i * 2, true);   // little-endian, unabhängig vom Gerät
+  return arr;
+}
+async function terrainStore(key, buf) {
+  try { await tdbPut("tiles", key, buf); terr.stored.set(key, buf.byteLength); }
+  catch (e) { log("Gelände-Kachel " + key + " speichern: " + errText(e), "err"); throw e; }
+}
+// Kachel holen: IndexedDB, sonst Netz (+ speichern). Gibt die gz-Bytes zurück.
+async function terrainGetBytes(key) {
+  if (terr.stored.has(key)) {
+    try { const b = await tdbGet("tiles", key); if (terrainBytesOk(key, b)) return b; } catch (e) {}
+  }
+  const buf = await terrainFetchTile(key);
+  terrainStore(key, buf).catch(() => {});
+  return buf;
+}
+function terrainLoad(key) {
+  if (terr.pending.has(key)) return terr.pending.get(key);
+  const p = (async () => {
+    try {
+      const arr = await terrainDecode(await terrainGetBytes(key));
+      terr.mem.delete(key); terr.mem.set(key, arr);
+      while (terr.mem.size > TERRAIN_MEM_MAX) terr.mem.delete(terr.mem.keys().next().value);
+      terr.failed.delete(key);
+    } catch (e) {
+      terr.failed.set(key, { at: performance.now(), msg: errText(e) });
+    } finally { terr.pending.delete(key); }
+  })();
+  terr.pending.set(key, p);
+  return p;
+}
+// Nachbarkacheln im Hintergrund speichern (nur wenn noch nicht vorhanden), damit ein kurzer Netzausfall nicht stört
+function terrainPrefetchNeighbours(key) {
+  const [ty, tx] = key.split("_").map(Number);
+  const keys = [];
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const k = (ty + dy) + "_" + (tx + dx);
+    if (k !== key && k in terr.index.kacheln && !terr.stored.has(k)) keys.push(k);
+  }
+  (async () => {
+    for (const k of keys) {
+      if (terr.stored.has(k)) continue;
+      const f = terr.failed.get(k);
+      if (f && performance.now() - f.at < TERRAIN_RETRY_MS) continue;
+      try { await terrainStore(k, await terrainFetchTile(k)); }
+      catch (e) { terr.failed.set(k, { at: performance.now(), msg: errText(e) }); }
+    }
+  })();
+}
+
+// Geländehöhe an (lat, lon): {h (m) oder null, msg}. Synchron; fehlende Kachel wird im Hintergrund geladen.
+function terrainAt(lat, lon) {
+  if (terr.state === "nodecomp") return { h: null, msg: "Browser kann Kacheln nicht entpacken" };
+  if (terr.state !== "ok") {
+    if (terr.state === "noindex" && performance.now() - terr.initAt > TERRAIN_RETRY_MS) terrainInit();
+    return { h: null, msg: terr.state === "init" ? "Geländedaten laden …" : "Geländedaten nicht erreichbar" };
+  }
+  const loc = Core.terrainLocate(terr.grid, lat, lon);
+  if (!loc) return { h: null, msg: "Position ungültig" };
+  if (!(loc.key in terr.index.kacheln)) return { h: null, msg: "ausserhalb der Geländedaten" };
+  if (loc.key !== terr.lastKey) { terr.lastKey = loc.key; terrainPrefetchNeighbours(loc.key); }
+  const tile = terr.mem.get(loc.key);
+  if (!tile) {
+    const f = terr.failed.get(loc.key);
+    if (!f || performance.now() - f.at > TERRAIN_RETRY_MS) terrainLoad(loc.key);
+    return { h: null, msg: f ? "Gelände fehlt (offline?)" : "Gelände lädt …" };
+  }
+  const h = Core.terrainSample(terr.grid, tile, loc);
+  terr.lastH = h;
+  return h === null ? { h: null, msg: "keine Geländehöhe hier" } : { h, msg: "" };
+}
+
+/* ---------- Gebiet offline speichern ---------- */
+function parseCenter(text) {
+  const m = /^\s*(-?\d+(?:[.,]\d+)?)\s*[,;\s]\s*(-?\d+(?:[.,]\d+)?)\s*$/.exec(text || "");
+  if (!m) return null;
+  const lat = parseFloat(m[1].replace(",", ".")), lon = parseFloat(m[2].replace(",", "."));
+  return lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180 ? { lat, lon } : null;
+}
+function phonePosition() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) { reject(new Error("kein Standortzugriff im Browser")); return; }
+    navigator.geolocation.getCurrentPosition(p => resolve({ lat: p.coords.latitude, lon: p.coords.longitude }),
+      e => reject(new Error(e.message || "Standort nicht verfügbar")), { enableHighAccuracy: true, timeout: 20000, maximumAge: 120000 });
+  });
+}
+async function terrainDownloadArea() {
+  if (terr.job) return;
+  if (terr.state !== "ok") await terrainInit();
+  if (terr.state !== "ok") { terr.jobMsg = "Geländedaten nicht erreichbar (Netz?)"; return; }
+  const txt = $("terrCenter").value.trim();
+  let c = null, src = "";
+  if (txt) { c = parseCenter(txt); src = "eingegeben"; if (!c) { terr.jobMsg = "Mittelpunkt nicht lesbar – Beispiel: 46.68, 7.86"; return; } }
+  else if (cur.gga && Core.ggaHasFix(cur.gga) && performance.now() - tLast.gga <= STALE_MS) { c = { lat: cur.gga.lat, lon: cur.gga.lon }; src = "Vario-GPS"; }
+  else {
+    terr.jobMsg = "Standort wird ermittelt …";
+    try { c = await phonePosition(); src = "Handy-Standort"; }
+    catch (e) { terr.jobMsg = "Keine Position: " + errText(e) + " – Mittelpunkt eingeben"; return; }
+  }
+  const all = Core.terrainTilesAround(terr.grid, c.lat, c.lon, settings.terrRadius * 1000).filter(k => k in terr.index.kacheln);
+  if (!all.length) { terr.jobMsg = "Keine Geländedaten im Umkreis von " + c.lat.toFixed(3) + ", " + c.lon.toFixed(3); return; }
+  const todo = all.filter(k => !terr.stored.has(k));
+  const mb = todo.reduce((s, k) => s + terr.index.kacheln[k], 0) / 1e6;
+  try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) {}
+  const job = terr.job = { done: 0, total: todo.length, errors: 0, lastErr: "", stop: false, bytes: 0, mb, all: all.length, src };
+  $("btnTerrStop").disabled = false;
+  const worker = async () => {
+    while (!job.stop) {
+      const k = todo.shift();
+      if (!k) return;
+      try { const b = await terrainFetchTile(k); await terrainStore(k, b); job.bytes += b.byteLength; }
+      catch (e) { job.errors++; job.lastErr = errText(e); if (/abgebrochen|quota|Speicher/i.test(job.lastErr)) job.stop = true; }
+      job.done++;
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+  terr.job = null; $("btnTerrStop").disabled = true;
+  terr.failed.clear();
+  terr.jobMsg = (job.stop && job.done < job.total ? "abgebrochen: " : "fertig: ") + (job.done - job.errors) + " neu, "
+    + (all.length - job.total) + " schon vorhanden" + (job.errors ? ", " + job.errors + " Fehler (" + job.lastErr + ")" : "")
+    + " · " + settings.terrRadius + " km um " + c.lat.toFixed(3) + ", " + c.lon.toFixed(3) + " (" + src + ")";
+  if (job.errors) log("Gelände-Download: " + job.errors + " Fehler, zuletzt: " + job.lastErr, "err");
+}
+$("btnTerrLoad").addEventListener("click", () => { terrainDownloadArea().catch(e => { terr.job = null; terr.jobMsg = "Fehler: " + errText(e); }); });
+$("btnTerrStop").addEventListener("click", () => { if (terr.job) terr.job.stop = true; });
+$("btnTerrClear").addEventListener("click", async () => {
+  if (terr.job) return;
+  if (!confirm("Alle offline gespeicherten Geländedaten löschen? Ohne Netz gibt es danach keine Höhe über Grund.")) return;
+  try { await tdbReq("tiles", "readwrite", s => s.clear()); terr.stored = new Map(); terr.jobMsg = "gelöscht"; }
+  catch (e) { terr.jobMsg = "Löschen fehlgeschlagen: " + errText(e); }
+});
+
+function renderTerrainSettings() {
+  const st = { init: "wird geladen …", noindex: "nicht erreichbar (kein Netz und nichts gespeichert)",
+               nodecomp: "nicht möglich: Browser kennt DecompressionStream nicht (iOS 16.4 oder neuer nötig)" }[terr.state]
+    || ("bereit · " + Object.keys(terr.index.kacheln).length + " Kacheln · Index aus " + terr.indexSrc);
+  setText("terrState", st);
+  let bytes = 0; for (const b of terr.stored.values()) bytes += b;
+  setText("terrStored", terr.stored.size + " Kacheln · " + (bytes / 1e6).toFixed(1) + " MB");
+  const j = terr.job;
+  setText("terrJob", j ? "läuft: " + j.done + " / " + j.total + " Kacheln (" + (j.bytes / 1e6).toFixed(1) + " von ~" + j.mb.toFixed(1) + " MB)"
+    + (j.errors ? " · " + j.errors + " Fehler" : "") + (j.stop ? " · wird abgebrochen …" : "") : terr.jobMsg);
+}
+function terrainDebugText() {
+  if (terr.state !== "ok") return terr.state;
+  const f = terr.lastKey && terr.failed.get(terr.lastKey);
+  return "Kachel " + (terr.lastKey || "–") + " · Höhe " + (terr.lastH === null ? "–" : terr.lastH.toFixed(1) + " m")
+    + " · Speicher " + terr.mem.size + " · offline " + terr.stored.size + (terr.pending.size ? " · lädt " + terr.pending.size : "")
+    + (f ? " · Fehler: " + f.msg : "");
+}
+
+/* =====================================================================
    OFFLINE (Service Worker)
    ===================================================================== */
 let swState = "wird geprüft …";
@@ -1628,6 +1986,7 @@ buildSettingsUI();
 showTab(activeTab);
 detectInterrupted();
 checkOffline();
+terrainInit();
 requestWakeLock();
 
 /* ---------- Laufende Statusanzeige ---------- */

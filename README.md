@@ -15,7 +15,7 @@ Online: <https://lototu-y4.github.io/Gleitschirmtrak/>
 - **Fluganzeige:**
   - Seiten „Flug“ und „Info“, durch seitliches Wischen oder über die Reiter unten zu wechseln.
   - „Menü“ führt zurück zur Startseite, der Flug läuft dabei weiter.
-- **Einstellungen:** Berechnungsfenster, Anordnung der Kästen, Wake Lock, Offline-Cache.
+- **Einstellungen:** Berechnungsfenster, Anordnung der Kästen, Wake Lock, Geländedaten offline speichern, Offline-Cache.
 - **Debug:**
   - Ausführlicher Verbindungsstatus, Datenquellen und Rohdaten
   - Gespeicherte Aufzeichnungen mit Export als .txt und .igc
@@ -28,7 +28,9 @@ Online: <https://lototu-y4.github.io/Gleitschirmtrak/>
 | `index.html` | die ganze App (HTML, CSS, JavaScript), ohne Frameworks |
 | `sw.js` | Service Worker: Offline-Cache, „Netz zuerst, Cache als Rückfall“ |
 | `manifest.webmanifest` | Web-App-Manifest |
-| `tests/core.test.js` | Tests für Parser, Prüfsumme, Berechnungen und IGC-Export |
+| `tests/core.test.js` | Tests für Parser, Prüfsumme, Berechnungen, IGC-Export und Geländeabfrage |
+| `terrain/` | Geländekacheln für „Höhe über Grund“ (`index.json` + `tiles/*.u16.gz`, 1140 Kacheln, ~220 MB), Kopie von `agl-terrain/output/tiles_25m/` |
+| `agl-terrain/` | Werkzeug, das die Kacheln aus swisstopo-Daten erzeugt und prüft (eigene README) |
 
 ## Daten
 
@@ -49,6 +51,23 @@ Online: <https://lototu-y4.github.io/Gleitschirmtrak/>
   - Ein Fenster gilt erst als gefüllt, wenn es zu mindestens 90 % abgedeckt ist.
 - Kommen mehr als 2 s keine Daten, werden die Werte abgedunkelt und mit „KEINE DATEN“ markiert.
 
+## Höhe über Grund (AGL)
+
+- **Berechnung:** GPS-Höhe über Meer (GGA Feld 9) minus Geländehöhe an der aktuellen Position.
+  Der Geoid-Abstand wird dabei **nicht** addiert, weil das Gelände ebenfalls Höhen über Meer (LN02) enthält.
+- **Gelände:** swisstopo swissALTIRegio, als 25-m-Raster in WGS84 (Schweiz mit ca. 10 km Rand).
+  - Pro Rasterzelle steht der höchste Wert, das Gelände ist also eher zu hoch und die AGL eher zu klein.
+  - Zwischen den vier Nachbarpunkten wird bilinear interpoliert. Das kann an Gipfeln und Graten wieder etwas tiefer liegen (siehe `agl-terrain/BERICHT.md`).
+- **Kachel laden:** zuerst aus dem Speicher, dann aus der IndexedDB (`flugapp-terrain`), dann aus dem Netz.
+  - Kacheln aus dem Netz werden in der IndexedDB gespeichert.
+  - Die 8 Nachbarkacheln der aktuellen Position werden im Hintergrund mitgeladen.
+- **Ohne Netz** geht es nur mit vorher gespeicherten Kacheln: *Einstellungen → Gelände → Gebiet offline speichern* (Radius um die aktuelle Position oder um eingegebene Koordinaten; 30 km ≈ 12 MB).
+- Der Service Worker und „Neueste Version laden“ lassen die Geländedaten in Ruhe.
+- Ausserhalb der Kacheln (z. B. Gardasee) zeigt der Kasten „ausserhalb der Geländedaten“.
+- **Nur eine Näherung:** Das Modell enthält keine Bäume, Gebäude, Leitungen oder Seilbahnen, und die GPS-Höhe schwankt um mehrere Meter.
+- Quelle: Bundesamt für Landestopografie swisstopo (swissALTIRegio, Open Government Data).
+- **Kacheln aktualisieren:** in `agl-terrain/` neu erzeugen (siehe dortige README) und `output/tiles_25m/` nach `terrain/` kopieren.
+
 ## Tests
 
 ```
@@ -56,6 +75,7 @@ node --test tests/core.test.js
 ```
 
 Die Tests laden die reinen Funktionen direkt aus `index.html`, aus dem Block zwischen `/*CORE-BEGIN*/` und `/*CORE-END*/`.
+Der Gelände-Test vergleicht mit Werten aus `agl-terrain/scripts/agl/terrain.py` an echten Kacheln. Fehlt `terrain/`, wird er übersprungen.
 
 ## IGC-Export
 

@@ -237,3 +237,85 @@ test("IGC: Fix-Verlust, fehlender Geoid-Abstand, kein Baro, Datum-Rückfall", ()
 test("ddmmyyUTC", () => {
   assert.equal(Core.ddmmyyUTC(Date.UTC(2026, 10, 22, 23, 59)), "221126");
 });
+
+/* ---------------- Gelände / Höhe über Grund ---------------- */
+// Kleines künstliches Raster: Kachel 0,1° × 0,1°, 4 × 2 Intervalle (5 × 3 Punkte), Ursprung 48 N / 5.8 E
+const tIndex = { grid: { lat_top: 48, lon_left: 5.8, tile_deg: 0.1, cells_per_tile_lat: 4, cells_per_tile_lon: 2 }, nodata: 65535 };
+const tGrid = Core.terrainGrid(tIndex);
+test("Gelände: Kachel und Zelle bestimmen (inkl. Rand und negativer Spalte)", () => {
+  let l = Core.terrainLocate(tGrid, 47.955, 5.86);   // 1,8 Zeilen / 1,2 Spalten vom Ursprung
+  assert.equal(l.key, "0_0"); assert.equal(l.r, 1); assert.equal(l.c, 1); near(l.fr, 0.8, 1e-9); near(l.fc, 0.2, 1e-9);
+  // knapp südlich der Kachel 0 → Kachel 1, Zeile 0
+  l = Core.terrainLocate(tGrid, 47.89, 5.85);
+  assert.equal(l.key, "1_0"); assert.equal(l.r, 0);
+  // westlich von lon_left → negative Spalte
+  l = Core.terrainLocate(tGrid, 47.99, 5.79);
+  assert.equal(l.key, "0_-1"); assert.ok(l.c >= 0 && l.c < 2, "Zelle innerhalb der Kachel");
+  // r, c liegen immer in 0..TR-1 bzw. 0..TC-1, damit r+1 und c+1 in derselben Kachel liegen
+  for (let i = 0; i < 500; i++) {
+    const lat = 45.7 + Math.random() * 2.3, lon = 5.7 + Math.random() * 5;
+    const q = Core.terrainLocate(tGrid, lat, lon);
+    assert.ok(q.r >= 0 && q.r < 4 && q.c >= 0 && q.c < 2 && q.fr >= 0 && q.fr < 1 && q.fc >= 0 && q.fc < 1, JSON.stringify(q));
+  }
+  assert.equal(Core.terrainLocate(tGrid, null, 8), null);
+  assert.equal(Core.terrainLocate(tGrid, NaN, 8), null);
+});
+test("Gelände: bilinear, nächster Punkt, keine Daten", () => {
+  // Werte in Dezimetern; Zeile r, Spalte c → 1000 + 100 r + 10 c
+  const tile = new Uint16Array(5 * 3);
+  for (let r = 0; r < 5; r++) for (let c = 0; c < 3; c++) tile[r * 3 + c] = 1000 + 100 * r + 10 * c;
+  const at = (lat, lon, ip) => Core.terrainSample(tGrid, tile, Core.terrainLocate(tGrid, lat, lon, ip));
+  near(at(48, 5.8), 100);                       // Eckpunkt
+  near(at(48 - 0.0125, 5.8 + 0.025), 105.5, 1e-9);   // Mitte der ersten Zelle: (1000+1010+1100+1110)/4 /10
+  near(at(48 - 0.03, 5.8), 112, 1e-9);          // 1,2 Zeilen nach unten
+  assert.equal(at(48 - 0.03, 5.8, false), 110); // nächster Punkt = Zeile 1
+  tile[1 * 3 + 1] = 65535;
+  assert.equal(at(48 - 0.0125, 5.8 + 0.025), null, "ein Nachbar ohne Daten → null");
+  assert.equal(at(48 - 0.0125, 5.8 + 0.075), null);
+  near(at(48 - 0.075, 5.8 + 0.075), 131.5, 1e-6);   // weit weg vom Loch: (1310+1320)/2 /10
+});
+test("Gelände: Kacheln im Umkreis, gzip-Erkennung, Höhe über Grund", () => {
+  const keys = Core.terrainTilesAround(tGrid, 47.95, 5.85, 1000);
+  assert.equal(JSON.stringify(keys), JSON.stringify(["0_0"]));
+  const k2 = Core.terrainTilesAround(tGrid, 47.9, 5.8, 12000);   // Ecke von vier Kacheln, ±12 km
+  assert.ok(k2.includes("0_-1") && k2.includes("1_0") && k2.includes("0_0") && k2.includes("1_-1"));
+  assert.equal(Core.isGzip(new Uint8Array([0x1f, 0x8b, 8])), true);
+  assert.equal(Core.isGzip(new Uint8Array([0xd0, 0x07])), false);
+  assert.equal(Core.aglOf(2600, 2501.6), 2600 - 2501.6);
+  assert.equal(Core.aglOf(null, 100), null); assert.equal(Core.aglOf(100, null), null);
+  assert.equal(Core.fmtMeters(98.4), "98"); assert.equal(Core.fmtMeters(-5.6), Core.MINUS + "6");
+  assert.equal(Core.fmtMeters(-0.3), "0"); assert.equal(Core.fmtMeters(null), null);
+});
+
+// Echte Kacheln aus terrain/ (falls vorhanden) gegen Werte aus agl-terrain/scripts/agl/terrain.py
+const terrDir = path.join(__dirname, "..", "terrain");
+const haveTerrain = fs.existsSync(path.join(terrDir, "index.json"));
+test("Gelände: echte swisstopo-Kacheln = Python-Referenz", { skip: !haveTerrain && "terrain/ fehlt" }, () => {
+  const zlib = require("node:zlib");
+  const index = JSON.parse(fs.readFileSync(path.join(terrDir, "index.json"), "utf8"));
+  const grid = Core.terrainGrid(index);
+  const loadTile = (key) => {
+    const raw = zlib.gunzipSync(fs.readFileSync(path.join(terrDir, "tiles", key + ".u16.gz")));
+    const a = new Uint16Array(raw.length / 2);
+    for (let i = 0; i < a.length; i++) a[i] = raw.readUInt16LE(i * 2);
+    return a;
+  };
+  const ref = [   // [lat, lon, bilinear, nächster Punkt]  (Python, 25-m-Kacheln)
+    [47.24944, 9.34333, 2501.628800000004, 2501.8],          // Säntis
+    [45.93694, 7.86694, 4627.824389120004, 4634.2],          // Dufourspitze
+    [46.5, 8.0, 2943.4999999999964, 2943.5],
+    [47.0, 8.0, 928.5000000000161, 928.5],                   // genau auf einer Kachelkante
+    [46.95, 5.82, 363.92999999996994, 362.4],
+    [46.123456, 7.654321, 2615.749706316813, 2614.7],
+    [47.900741573033706, 5.797828947368421, 299.05999999999995, 299.1],   // Kachel 0_-1
+  ];
+  for (const [lat, lon, bil, nn] of ref) {
+    const l = Core.terrainLocate(grid, lat, lon);
+    assert.ok(l.key in index.kacheln, l.key);
+    near(Core.terrainSample(grid, loadTile(l.key), l), bil, 1e-6);
+    const n = Core.terrainLocate(grid, lat, lon, false);
+    near(Core.terrainSample(grid, loadTile(n.key), n), nn, 1e-9);
+  }
+  // Gardasee liegt ausserhalb → keine Kachel
+  assert.equal(Core.terrainLocate(grid, 45.65, 10.7).key in index.kacheln, false);
+});

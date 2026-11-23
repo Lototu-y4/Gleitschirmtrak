@@ -1,0 +1,31 @@
+Raster: 445x304 Zellen/Kachel, ~24.99 m (Breite) x ~25.04 m (Länge); 1224 Kandidaten-Kacheln; Resampling=max
+  50/1224 (1s) Kacheln mit Daten: 35
+  100/1224 (2s) Kacheln mit Daten: 84
+  150/1224 (2s) Kacheln mit Daten: 134
+  200/1224 (2s) Kacheln mit Daten: 184
+  250/1224 (3s) Kacheln mit Daten: 234
+  300/1224 (3s) Kacheln mit Daten: 284
+  350/1224 (4s) Kacheln mit Daten: 334
+  400/1224 (4s) Kacheln mit Daten: 383
+  450/1224 (5s) Kacheln mit Daten: 432
+  500/1224 (5s) Kacheln mit Daten: 481
+  550/1224 (6s) Kacheln mit Daten: 530
+  600/1224 (6s) Kacheln mit Daten: 579
+  650/1224 (7s) Kacheln mit Daten: 628
+  700/1224 (7s) Kacheln mit Daten: 677
+  750/1224 (8s) Kacheln mit Daten: 725
+  800/1224 (8s) Kacheln mit Daten: 773
+  850/1224 (9s) Kacheln mit Daten: 821
+  900/1224 (9s) Kacheln mit Daten: 869
+  950/1224 (10s) Kacheln mit Daten: 917
+  1000/1224 (10s) Kacheln mit Daten: 965
+  1050/1224 (11s) Kacheln mit Daten: 1013
+  1100/1224 (11s) Kacheln mit Daten: 1061
+  1150/1224 (12s) Kacheln mit Daten: 1109
+  1200/1224 (12s) Kacheln mit Daten: 1131
+  1224/1224 (12s) Kacheln mit Daten: 1140
+Nähte angeglichen: 116 Kacheln geändert
+Anzahl Kacheln : 1140
+Gesamtgrösse   : 219.32 MB
+Mittel/Kachel  : 192 kB
+Grösste Kachel : 16_34 = 249 kB

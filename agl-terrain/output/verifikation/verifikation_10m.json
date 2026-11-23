@@ -1,0 +1,160 @@
+{
+  "ordner": "output\\tiles_10m_testgebiet",
+  "aufloesung_m": 10.0,
+  "pruefungen": [
+    {
+      "name": "A JS=Python (bilinear)",
+      "ok": true,
+      "detail": "300 Zufallspunkte, 300 mit Wert, max. Abweichung 0.0000 cm (Toleranz 0.1 cm), null-Unterschiede: 0, null (py/js): 0/0",
+      "uebersprungen": false
+    },
+    {
+      "name": "A JS=Python (nearest)",
+      "ok": true,
+      "detail": "300 Zufallspunkte, 300 mit Wert, max. Abweichung 0.0000 cm (Toleranz 0.1 cm), null-Unterschiede: 0, null (py/js): 0/0",
+      "uebersprungen": false
+    },
+    {
+      "name": "B Gipfel Dufourspitze",
+      "ok": true,
+      "detail": "ausserhalb dieses Kachelsatzes (Testgebiet) – übersprungen",
+      "uebersprungen": true
+    },
+    {
+      "name": "B Gipfel Matterhorn",
+      "ok": true,
+      "detail": "ausserhalb dieses Kachelsatzes (Testgebiet) – übersprungen",
+      "uebersprungen": true
+    },
+    {
+      "name": "B Gipfel Weisshorn",
+      "ok": true,
+      "detail": "ausserhalb dieses Kachelsatzes (Testgebiet) – übersprungen",
+      "uebersprungen": true
+    },
+    {
+      "name": "B Gipfel Finsteraarhorn",
+      "ok": true,
+      "detail": "ausserhalb dieses Kachelsatzes (Testgebiet) – übersprungen",
+      "uebersprungen": true
+    },
+    {
+      "name": "B Gipfel Jungfrau",
+      "ok": true,
+      "detail": "ausserhalb dieses Kachelsatzes (Testgebiet) – übersprungen",
+      "uebersprungen": true
+    },
+    {
+      "name": "B Gipfel Piz Bernina",
+      "ok": true,
+      "detail": "ausserhalb dieses Kachelsatzes (Testgebiet) – übersprungen",
+      "uebersprungen": true
+    },
+    {
+      "name": "B Gipfel Säntis",
+      "ok": true,
+      "detail": "publiziert 2502 | Roh-Max(150 m) 2501.8 | Gitter-Max(175 m) 2501.8 | am Punkt: bilinear 2501.8, nächster 2501.8",
+      "uebersprungen": false
+    },
+    {
+      "name": "B See Genfersee",
+      "ok": true,
+      "detail": "ausserhalb dieses Kachelsatzes (Testgebiet) – übersprungen",
+      "uebersprungen": true
+    },
+    {
+      "name": "B See Bodensee (Obersee)",
+      "ok": true,
+      "detail": "ausserhalb dieses Kachelsatzes (Testgebiet) – übersprungen",
+      "uebersprungen": true
+    },
+    {
+      "name": "B See Zürichsee",
+      "ok": true,
+      "detail": "ausserhalb dieses Kachelsatzes (Testgebiet) – übersprungen",
+      "uebersprungen": true
+    },
+    {
+      "name": "B See Neuenburgersee",
+      "ok": true,
+      "detail": "ausserhalb dieses Kachelsatzes (Testgebiet) – übersprungen",
+      "uebersprungen": true
+    },
+    {
+      "name": "B See Vierwaldstättersee",
+      "ok": true,
+      "detail": "ausserhalb dieses Kachelsatzes (Testgebiet) – übersprungen",
+      "uebersprungen": true
+    },
+    {
+      "name": "B See Lago Maggiore",
+      "ok": true,
+      "detail": "Nennspiegel ~193.5 | häufigster Wert 193.4 (117 von 1600 Rasterpunkten) | Toleranz ±1.0 m",
+      "uebersprungen": false
+    },
+    {
+      "name": "B See Thunersee",
+      "ok": true,
+      "detail": "ausserhalb dieses Kachelsatzes (Testgebiet) – übersprungen",
+      "uebersprungen": true
+    },
+    {
+      "name": "C Randpunkte benachbarter Kacheln identisch",
+      "ok": true,
+      "detail": "43 Nähte geprüft, 0 mit Abweichung",
+      "uebersprungen": false
+    },
+    {
+      "name": "D Gitter(bilinear) minus Rohdaten(bilinear)",
+      "ok": true,
+      "detail": "n=1500: Mittel +3.50 m, Median +2.55 m, 1%-Quantil +0.0 m, 99%-Quantil +14.2 m (positiv = Raster höher als Roh – erwartet bei Max-Resampling)",
+      "uebersprungen": false
+    }
+  ],
+  "gipfel": [
+    {
+      "name": "Säntis",
+      "publiziert": 2502,
+      "roh_max_150m": 2501.79248046875,
+      "gitter_max_175m": 2501.8,
+      "am_punkt_bilinear": 2501.8,
+      "am_punkt_naechster": 2501.8
+    }
+  ],
+  "seen": [
+    {
+      "name": "Lago Maggiore",
+      "nennwert": 193.5,
+      "modus": 193.4,
+      "punkte_im_see": 117
+    }
+  ],
+  "naehte": {
+    "geprueft": 43,
+    "fehler": 0
+  },
+  "vs_rohdaten": {
+    "bilinear": {
+      "n": 1500,
+      "mittel": 3.4957215966596045,
+      "median": 2.549319766375902,
+      "p01": 0.013832218557668056,
+      "p05": 0.12827285334466582,
+      "p95": 10.095948242574442,
+      "p99": 14.19588596497639,
+      "min": -0.29719465499783837,
+      "max": 65.22237280967488
+    },
+    "naechster": {
+      "n": 1500,
+      "mittel": 3.5451959777961073,
+      "median": 2.4320648642938067,
+      "p01": -1.350646246796789,
+      "p05": -0.015307504473196329,
+      "p95": 11.020412991059857,
+      "p99": 18.220412649635165,
+      "min": -6.723670688613765,
+      "max": 65.62394775308212
+    }
+  }
+}

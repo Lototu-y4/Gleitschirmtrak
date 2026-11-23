@@ -1,0 +1,15 @@
+127.0.0.1 - - [23/Nov/2026 10:52:09] "HEAD /js/demo.html HTTP/1.1" 200 -
+127.0.0.1 - - [23/Nov/2026 10:52:12] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [23/Nov/2026 10:52:12] code 404, message File not found
+127.0.0.1 - - [23/Nov/2026 10:52:12] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [23/Nov/2026 10:52:14] "GET /js/demo.html HTTP/1.1" 200 -
+127.0.0.1 - - [23/Nov/2026 10:52:14] "GET /js/terrain.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Nov/2026 10:52:14] code 404, message File not found
+127.0.0.1 - - [23/Nov/2026 10:52:14] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [23/Nov/2026 10:52:17] "GET /output/tiles_25m/index.json HTTP/1.1" 200 -
+127.0.0.1 - - [23/Nov/2026 10:52:17] "GET /output/tiles_25m/tiles/20_20.u16.gz HTTP/1.1" 200 -
+127.0.0.1 - - [23/Nov/2026 10:52:17] "GET /output/tiles_25m/tiles/20_18.u16.gz HTTP/1.1" 200 -
+127.0.0.1 - - [23/Nov/2026 10:52:17] "GET /output/tiles_25m/tiles/15_7.u16.gz HTTP/1.1" 200 -
+127.0.0.1 - - [23/Nov/2026 10:57:37] "GET /output/tiles_25m/index.json HTTP/1.1" 304 -
+127.0.0.1 - - [23/Nov/2026 10:57:37] "GET /output/tiles_25m/tiles/20_20.u16.gz HTTP/1.1" 304 -
+127.0.0.1 - - [23/Nov/2026 10:57:53] "GET /output/tiles_25m/tiles/10_21.u16.gz HTTP/1.1" 200 -

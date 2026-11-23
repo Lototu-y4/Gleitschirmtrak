@@ -22,6 +22,8 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  // Geländekacheln verwaltet die Seite selbst (IndexedDB), nicht hier zwischenspeichern
+  if (url.pathname.includes("/terrain/")) return;
   event.respondWith(networkFirst(req));
 });
 

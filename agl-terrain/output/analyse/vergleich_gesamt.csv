@@ -1,0 +1,6 @@
+variante;fluege;fixes;agl_min;n_negativ;anteil_negativ_prozent;landungen_n;agl_landung_median;agl_landung_streuung_stabw;agl_landung_abs_median;diff_zu_roh_mittel;diff_zu_roh_p05;diff_zu_roh_p95;anteil_agl_kleiner_als_roh_prozent;anteil_agl_groesser_als_roh_prozent
+25m_bil;17;107186;-7.7;130;0.12;15;2.7;8.1;6.2;-10.64;-27.53;-1.41;99.3;0.0
+25m_nn;17;107186;-35.8;153;0.14;15;2.8;8.0;5.8;-10.63;-29.77;-0.53;98.0;1.1
+10m_bil;17;107186;-5.0;93;0.09;15;2.8;8.2;4.4;-4.47;-11.98;-0.37;99.0;0.1
+10m_nn;17;107186;-5.6;83;0.08;15;3.2;8.2;3.6;-4.48;-13.04;0.1;93.0;5.4
+roh_bil;17;107186;-2.4;30;0.03;15;3.9;7.8;3.9;;;;;
