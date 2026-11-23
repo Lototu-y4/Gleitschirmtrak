@@ -49,16 +49,32 @@
   main { flex: 1; min-height: 0; position: relative; }
   .page { position: absolute; inset: 0; display: none; }
   .page.active { display: block; }
-  .page.inst { padding: 4px; touch-action: none; overflow: hidden; }
   .page.scroll { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 10px 12px 24px; }
-  .page.col.active { display: flex; flex-direction: column; padding: 8px 10px; }
+  /* Flugmodus: Seiten nebeneinander, natives seitliches Scrollen mit Einrasten */
+  .swiper { display: flex; height: 100%; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory;
+    overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scrollbar-width: none; touch-action: pan-x; }
+  .swiper::-webkit-scrollbar { display: none; }
+  .fpage { flex: 0 0 100%; width: 100%; height: 100%; padding: 4px; overflow: hidden; scroll-snap-align: start; scroll-snap-stop: always; touch-action: pan-x; }
 
   /* ---------- Reiter unten ---------- */
-  #tabs { flex: none; display: flex; height: calc(var(--tabs-h) + env(safe-area-inset-bottom));
+  .tabbar { flex: none; display: flex; height: calc(var(--tabs-h) + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom); background: #111; border-top: 2px solid var(--line); }
-  #tabs button { flex: 1; margin: 0; padding: 2px 1px; border-radius: 0; background: transparent; color: var(--dim);
-    font-size: 14px; font-weight: 800; line-height: 1.1; border-right: 1px solid #222; width: auto; hyphens: manual; }
-  #tabs button.on { color: #000; background: var(--text); }
+  .tabbar button { flex: 1; margin: 0; padding: 2px 1px; min-height: 0; border-radius: 0; background: transparent; color: var(--dim);
+    font-size: 17px; font-weight: 800; line-height: 1.1; border-right: 1px solid #222; width: auto; }
+  .tabbar button.on { color: #000; background: var(--text); }
+  .tabbar button.menu { flex: 0.8; color: var(--text); }
+  #ftabs { display: none; }
+  body.flying #tabs { display: none; }
+  body.flying #ftabs { display: flex; }
+
+  /* ---------- Startseite ---------- */
+  .bigstat { border-radius: 14px; padding: 18px 14px; margin-bottom: 4px; border: 2px solid var(--line); text-align: center; }
+  .bigstat .bs-main { font-size: 34px; font-weight: 900; line-height: 1.1; }
+  .bigstat .bs-sub { font-size: 17px; font-weight: 600; color: var(--dim); margin-top: 6px; }
+  .bigstat.st-ok { background: #0b2614; border-color: var(--ok); } .bigstat.st-ok .bs-main { color: var(--ok); }
+  .bigstat.st-stale { background: #2e2200; border-color: var(--warn); } .bigstat.st-stale .bs-main { color: var(--warn); }
+  .bigstat.st-bad { background: #2a0c0c; border-color: var(--bad); } .bigstat.st-bad .bs-main { color: var(--bad); }
+  button.go { background: var(--ok); color: #000; margin-top: 12px; }
 
   /* ---------- Instrument-Kästen ---------- */
   .igrid { display: grid; gap: 4px; height: 100%; }
@@ -129,14 +145,13 @@
 
   /* ---------- Rohdaten ---------- */
   #rawStats { font-size: .9rem; color: var(--dim); margin-bottom: 6px; font-variant-numeric: tabular-nums; }
-  #raw { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  #raw { height: 55vh; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
     background: #05080c; border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px;
     font: 13px/1.35 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-all; -webkit-user-select: text; user-select: text; }
   #raw .ts { color: var(--dim); } #raw .hex { color: var(--warn); } #raw .sys { color: var(--info); }
   #raw .err { color: var(--bad); } #raw .bad { color: #ff9a9a; text-decoration: line-through; }
 
   /* ---------- Aufzeichnung ---------- */
-  #recBtn.on { background: var(--bad); color: #fff; }
   .sess { border-top: 1px solid var(--line); padding: 10px 0; }
   .sess:first-child { border-top: 0; }
   .sess .t { font-weight: 800; } .sess .m { font-size: .9rem; color: var(--dim); }
@@ -160,67 +175,21 @@
 <div id="errbar" role="alert"><span id="errText"></span><button id="errClose" aria-label="Fehlermeldung schliessen">✕</button></div>
 
 <main>
-  <section class="page inst" id="page-flug"><div class="igrid"></div></section>
-  <section class="page inst" id="page-info"><div class="igrid"></div></section>
-
-  <section class="page scroll" id="page-verbinden">
-    <div id="apiInfo" class="api">Prüfe Bluetooth-Schnittstelle …</div>
-    <div class="grid">
-      <div class="cell"><div class="k">Verbindung</div><div class="v s-none" id="conn">nicht verbunden</div></div>
-      <div class="cell"><div class="k">Gerät</div><div class="v" id="devName">–</div></div>
-      <div class="cell"><div class="k">Seit letzter Nachricht</div><div class="v" id="since">–</div></div>
-      <div class="cell"><div class="k">Nachrichten · pro s</div><div class="v" id="msgs">0 · 0.0</div></div>
-      <div class="cell wide"><div class="k">Verbindungsabbrüche · letzter Abbruch</div><div class="v" id="drops">0 · –</div></div>
+  <!-- ================= START ================= -->
+  <section class="page scroll" id="page-start">
+    <div id="startStatus" class="bigstat st-bad">
+      <div class="bs-main" id="ssMain">Nicht verbunden</div>
+      <div class="bs-sub" id="ssSub">–</div>
     </div>
     <div class="row">
-      <button id="btnConnect">Verbinden</button>
-      <button id="btnDisconnect" class="secondary" disabled>Trennen</button>
+      <button id="btnConnect" class="big">Verbinden</button>
+      <button id="btnDisconnect" class="secondary big" disabled>Trennen</button>
     </div>
-    <button id="btnTestNoSvc" class="secondary">Test ohne Service-Liste</button>
-    <label class="chk"><input type="checkbox" id="autoReconnect" checked> Nach Abbruch automatisch neu verbinden</label>
-
-    <h2>Services &amp; Characteristics</h2>
-    <div id="services"><span class="hint">Noch nicht verbunden.</span></div>
-
-    <h2>Service-UUIDs (optionalServices)</h2>
-    <textarea id="uuids" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
-    <div class="hint">Eine UUID pro Zeile (128-Bit-Format oder kurz als 0xFFE0 – wird automatisch ausgeschrieben). Text nach # wird ignoriert. Wird automatisch gespeichert und beim nächsten „Verbinden“ verwendet.</div>
-    <button class="secondary" id="btnResetUuids">Standardliste wiederherstellen</button>
-  </section>
-
-  <section class="page col" id="page-roh">
-    <div id="rawStats">–</div>
-    <div class="row" style="flex:none;margin-bottom:6px">
-      <button class="secondary" id="btnPause" style="margin-top:0">Pause</button>
-      <button class="secondary" id="btnClear" style="margin-top:0">Leeren</button>
-    </div>
-    <div id="raw"></div>
-  </section>
-
-  <section class="page scroll" id="page-aufz">
-    <div id="recInterrupted"></div>
-    <button id="recBtn" class="big">Aufzeichnung starten</button>
-    <div class="card" style="margin-top:10px">
-      <div class="kv">
-        <span>Status</span><b id="recState">aus</b>
-        <span>Dauer</span><b id="recDur">–</b>
-        <span>Zeilen gespeichert</span><b id="recLines">–</b>
-        <span>GPS-Fixes gespeichert</span><b id="recFixes">–</b>
-        <span>Speicher</span><b id="recDb">–</b>
-      </div>
-    </div>
-    <div class="notice">IGC-Export: <b>nicht signiert, nicht für Wettbewerbe</b>. Die Datei hat keinen gültigen G-Record (Sicherheits-Signatur) und ist im Kopf entsprechend gekennzeichnet.</div>
-    <h2>Angaben für den IGC-Kopf (optional)</h2>
-    <div class="field"><span>Pilot</span><input id="setPilot" style="width:60%" autocomplete="off"></div>
-    <div class="field"><span>Gleitschirm</span><input id="setGlider" style="width:60%" autocomplete="off"></div>
-    <h2>Gespeicherte Aufzeichnungen</h2>
-    <label class="chk"><input type="checkbox" id="exportAsText"> Export im Textfeld anzeigen (zum Kopieren, falls Download/Teilen nicht geht)</label>
-    <div id="sessList" class="card"><span class="hint">Lade …</span></div>
-    <div id="exportBox" style="display:none">
-      <div class="hint" id="exportName"></div>
-      <textarea id="exportText" readonly></textarea>
-      <button class="secondary" id="exportClose">Textfeld schliessen</button>
-    </div>
+    <div id="recInterrupted" style="margin-top:12px"></div>
+    <button id="btnFlight" class="big go">Flug starten</button>
+    <button id="btnEndFlight" class="big danger" style="display:none">Flug beenden</button>
+    <div class="hint" style="margin-top:6px">„Flug starten“ öffnet die Fluganzeige (Seiten „Flug“ und „Info“, seitlich wischen zum Wechseln) und startet automatisch die Aufzeichnung.</div>
+    <div class="notice" style="margin-top:14px">Eigenbau ohne Zulassung – nur Ergänzung zum Hauptinstrument.</div>
   </section>
 
   <section class="page scroll" id="page-einst">
@@ -251,15 +220,87 @@
     </div></div>
     <button class="secondary" id="btnUpdate">Neueste Version laden (trennt Bluetooth!)</button>
   </section>
+
+  <!-- ================= DEBUG ================= -->
+  <section class="page scroll" id="page-debug">
+    <h2>Verbindung</h2>
+    <div id="apiInfo" class="api">Prüfe Bluetooth-Schnittstelle …</div>
+    <div class="grid">
+      <div class="cell"><div class="k">Verbindung</div><div class="v s-none" id="conn">nicht verbunden</div></div>
+      <div class="cell"><div class="k">Gerät</div><div class="v" id="devName">–</div></div>
+      <div class="cell"><div class="k">Seit letzter Nachricht</div><div class="v" id="since">–</div></div>
+      <div class="cell"><div class="k">Nachrichten · pro s</div><div class="v" id="msgs">0 · 0.0</div></div>
+      <div class="cell wide"><div class="k">Verbindungsabbrüche · letzter Abbruch</div><div class="v" id="drops">0 · –</div></div>
+    </div>
+    <button id="btnTestNoSvc" class="secondary">Test ohne Service-Liste</button>
+    <label class="chk"><input type="checkbox" id="autoReconnect" checked> Nach Abbruch automatisch neu verbinden</label>
+
+    <h2>Datenquellen</h2>
+    <div class="card"><div class="kv" id="dbgSources"></div></div>
+
+    <h2>Rohdaten (letzte 200 Zeilen)</h2>
+    <div id="rawStats">–</div>
+    <div class="row" style="margin-bottom:6px">
+      <button class="secondary" id="btnPause" style="margin-top:0">Pause</button>
+      <button class="secondary" id="btnClear" style="margin-top:0">Leeren</button>
+    </div>
+    <div id="raw"></div>
+
+    <h2>Aufzeichnung &amp; IGC</h2>
+    <div class="card">
+      <div class="kv">
+        <span>Status</span><b id="recState">aus</b>
+        <span>Dauer</span><b id="recDur">–</b>
+        <span>Zeilen gespeichert</span><b id="recLines">–</b>
+        <span>GPS-Fixes gespeichert</span><b id="recFixes">–</b>
+        <span>Speicher</span><b id="recDb">–</b>
+      </div>
+    </div>
+    <div class="notice">IGC-Export: <b>nicht signiert, nicht für Wettbewerbe</b>. Die Datei hat keinen gültigen G-Record (Sicherheits-Signatur) und ist im Kopf entsprechend gekennzeichnet.</div>
+    <div class="field"><span>Pilot (IGC-Kopf)</span><input id="setPilot" style="width:55%" autocomplete="off"></div>
+    <div class="field"><span>Gleitschirm (IGC-Kopf)</span><input id="setGlider" style="width:55%" autocomplete="off"></div>
+    <label class="chk"><input type="checkbox" id="exportAsText"> Export im Textfeld anzeigen (zum Kopieren, falls Download/Teilen nicht geht)</label>
+    <div id="sessList" class="card"><span class="hint">Lade …</span></div>
+    <div id="exportBox" style="display:none">
+      <div class="hint" id="exportName"></div>
+      <textarea id="exportText" readonly></textarea>
+      <button class="secondary" id="exportClose">Textfeld schliessen</button>
+    </div>
+
+    <h2>App</h2>
+    <div class="card"><div class="kv">
+      <span>Offline-Cache</span><b id="dbgSw">–</b>
+      <span>Wake Lock</span><b id="dbgWake">–</b>
+      <span>App-Version</span><b id="dbgVer">–</b>
+    </div></div>
+
+    <h2>Services &amp; Characteristics</h2>
+    <div id="services"><span class="hint">Noch nicht verbunden.</span></div>
+
+    <h2>Service-UUIDs (optionalServices)</h2>
+    <textarea id="uuids" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
+    <div class="hint">Eine UUID pro Zeile (128-Bit-Format oder kurz als 0xFFE0 – wird automatisch ausgeschrieben). Text nach # wird ignoriert. Wird automatisch gespeichert und beim nächsten „Verbinden“ verwendet.</div>
+    <button class="secondary" id="btnResetUuids">Standardliste wiederherstellen</button>
+  </section>
+
+  <!-- ================= FLUG (seitlich wischen) ================= -->
+  <section class="page" id="page-fly">
+    <div class="swiper" id="swiper">
+      <section class="fpage" id="page-flug"><div class="igrid"></div></section>
+      <section class="fpage" id="page-info"><div class="igrid"></div></section>
+    </div>
+  </section>
 </main>
 
-<nav id="tabs">
-  <button data-tab="flug">Flug</button>
-  <button data-tab="info">Info</button>
-  <button data-tab="verbinden">Ver&shy;binden</button>
-  <button data-tab="roh">Roh&shy;daten</button>
-  <button data-tab="aufz">Auf&shy;zeich&shy;nung</button>
-  <button data-tab="einst">Ein&shy;stel&shy;lungen</button>
+<nav id="tabs" class="tabbar">
+  <button data-tab="start">Start</button>
+  <button data-tab="einst">Einstellungen</button>
+  <button data-tab="debug">Debug</button>
+</nav>
+<nav id="ftabs" class="tabbar">
+  <button data-fp="0">Flug</button>
+  <button data-fp="1">Info</button>
+  <button id="btnMenu" class="menu">Menü</button>
 </nav>
 
 <!-- ======================================================================
@@ -912,7 +953,7 @@ function handleLine(line, key) {
 /* =====================================================================
    FLUG-ANZEIGE
    ===================================================================== */
-const APP_VERSION = "2026-11-22.1";
+const APP_VERSION = "2026-11-23.1";
 const STALE_MS = 2000;          // ohne neue Daten länger als das → „keine Daten“
 const HOLD_MS = 2000;           // ein Messwert gilt höchstens so lange (Lücken zählen nicht)
 const MIN_COVERAGE = 0.9;       // Fenster gilt als gefüllt ab 90 % Abdeckung
@@ -1132,26 +1173,57 @@ function renderInstrumentPage(pid, now, noData) {
 function refitAll() { for (const pid in pageRefs) for (const r of pageRefs[pid]) { fitText(r.num); r.lastLen = r.num.textContent.length; } }
 window.addEventListener("resize", () => setTimeout(refitAll, 50));
 
-/* ---------- Reiter ---------- */
-const TABS = ["flug", "info", "verbinden", "roh", "aufz", "einst"];
+/* ---------- Seiten und Flugmodus ---------- */
+const TABS = ["start", "einst", "debug", "fly"];
 let activeTab = lsGet("flugapp.tab");
-if (!TABS.includes(activeTab)) activeTab = "verbinden";
+if (!["start", "einst", "debug"].includes(activeTab)) activeTab = "start";
+let flyIndex = 0;
 function showTab(t) {
   activeTab = t;
-  lsSet("flugapp.tab", t);
+  if (t !== "fly") lsSet("flugapp.tab", t);
   for (const id of TABS) $("page-" + id).classList.toggle("active", id === t);
+  document.body.classList.toggle("flying", t === "fly");
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
-  if (t === "flug" || t === "info") requestAnimationFrame(refitAll);
-  if (t === "aufz") refreshSessions();
-  if (t === "roh") rawEl.scrollTop = rawEl.scrollHeight;
+  if (t === "fly") requestAnimationFrame(() => { const sw = $("swiper"); sw.scrollLeft = flyIndex * sw.clientWidth; markFlyTab(); refitAll(); });
+  if (t === "debug") { refreshSessions(); rawEl.scrollTop = rawEl.scrollHeight; }
   render();
 }
+function markFlyTab() { document.querySelectorAll("#ftabs button[data-fp]").forEach(b => b.classList.toggle("on", +b.dataset.fp === flyIndex)); }
+function goFlyPage(i) {
+  const sw = $("swiper");
+  flyIndex = i; markFlyTab();
+  sw.scrollTo({ left: i * sw.clientWidth, behavior: "smooth" });
+}
+$("swiper").addEventListener("scroll", () => {
+  const sw = $("swiper");
+  const i = Math.round(sw.scrollLeft / Math.max(1, sw.clientWidth));
+  if (i !== flyIndex) { flyIndex = i; markFlyTab(); }
+}, { passive: true });
+window.addEventListener("resize", () => { if (activeTab === "fly") { const sw = $("swiper"); sw.scrollLeft = flyIndex * sw.clientWidth; } });
 document.querySelectorAll("#tabs button").forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab)));
-$("sbar").addEventListener("click", () => showTab("verbinden"));
+document.querySelectorAll("#ftabs button[data-fp]").forEach(b => b.addEventListener("click", () => goFlyPage(+b.dataset.fp)));
+$("btnMenu").addEventListener("click", () => showTab("start"));
+$("sbar").addEventListener("click", () => { if (activeTab !== "fly") showTab("start"); });
+
+/* ---------- Flug starten / beenden (startet und stoppt die Aufzeichnung) ---------- */
+async function startFlight(resume) {
+  if (!rec.active) {
+    if (!resume && connState !== "connected" && !confirm("Noch nicht mit dem Vario verbunden. Flug trotzdem starten?")) return;
+    await recStart(resume || null);
+  }
+  flyIndex = 0;
+  showTab("fly");
+}
+$("btnFlight").addEventListener("click", () => startFlight(null));
+$("btnEndFlight").addEventListener("click", async () => {
+  if (!confirm("Flug beenden? Die Aufzeichnung wird gespeichert.")) return;
+  await recStop();
+  showTab("start");
+});
 
 /* ---------- Gesten abfangen: kein Zoomen, kein Ziehen ausserhalb der Scrollbereiche ---------- */
 document.addEventListener("touchmove", (e) => {
-  if (!e.target.closest || !e.target.closest(".page.scroll, #raw, textarea")) e.preventDefault();
+  if (!e.target.closest || !e.target.closest(".page.scroll, #raw, textarea, .swiper")) e.preventDefault();
 }, { passive: false });
 document.addEventListener("gesturestart", (e) => e.preventDefault());
 document.addEventListener("dblclick", (e) => e.preventDefault());
@@ -1174,14 +1246,57 @@ function render() {
   else if (rec.interrupted.length) { sbRec.textContent = "⚠ Aufz."; sbRec.className = "warn"; }
   else sbRec.textContent = "";
 
-  if (activeTab === "flug" || activeTab === "info") renderInstrumentPage(activeTab, now, noData);
-  if (activeTab === "roh") {
+  if (activeTab === "fly") { renderInstrumentPage("flug", now, noData); renderInstrumentPage("info", now, noData); }
+  if (activeTab === "start") renderStart(now, noData);
+  if (activeTab === "debug") {
     const b = stats.bad;
     $("rawStats").textContent = `Zeilen ${stats.lines} · verworfen: Prüfsumme falsch ${b.bad}, ohne Prüfsumme ${b.nocs}, unlesbar ${b.format}`
       + ` · GGA ${stats.types.gga} · RMC ${stats.types.rmc} · LXWP0 ${stats.types.lxwp0} · andere ${stats.types.other}`;
+    renderRecInfo();
+    renderDebugSources(now);
+    $("dbgWake").textContent = wakeState; $("dbgSw").textContent = swState; $("dbgVer").textContent = APP_VERSION;
   }
-  if (activeTab === "aufz") renderRecInfo();
   if (activeTab === "einst") { $("wakeState").textContent = wakeState; $("swState").textContent = swState; }
+}
+
+function setText(id, t) { const el = $(id); if (el.textContent !== t) el.textContent = t; }
+function renderStart(now, noData) {
+  let main, sub, cls;
+  if (connState === "connected" && !noData) {
+    main = "Verbunden"; cls = "st-ok";
+    sub = (device && device.name ? device.name + " · " : "") + lineRate(now).toFixed(0) + " Zeilen/s";
+  } else if (connState === "connected") {
+    main = "Verbunden – keine Daten"; cls = "st-stale";
+    sub = lastMsgAt ? "seit " + ((now - lastMsgAt) / 1000).toFixed(0) + " s nichts empfangen" : "noch nichts empfangen";
+  } else if (connState === "connecting") {
+    main = "Verbindet …"; cls = "st-stale"; sub = "Gerät in der Liste wählen";
+  } else if (connState === "disconnected") {
+    main = "Verbindung getrennt"; cls = "st-bad";
+    sub = !userDisconnect && $("autoReconnect").checked ? "versucht neu zu verbinden …" : "„Verbinden“ tippen";
+  } else {
+    main = "Nicht verbunden"; cls = "st-bad";
+    sub = bt ? "Vario einschalten und „Verbinden“ tippen" : "Kein Web Bluetooth – Seite in Bluefy öffnen";
+  }
+  const el = $("startStatus");
+  if (el.className !== "bigstat " + cls) el.className = "bigstat " + cls;
+  setText("ssMain", main); setText("ssSub", sub);
+  setText("btnFlight", rec.active ? "Zur Fluganzeige" : "Flug starten");
+  $("btnEndFlight").style.display = rec.active ? "" : "none";
+}
+function renderDebugSources(now) {
+  const age = (k) => tLast[k] > 0 ? ((now - tLast[k]) / 1000).toFixed(1) + " s" : "nie";
+  const v = (x, suf) => x === null || x === undefined ? "–" : x + (suf || "");
+  const g = cur.gga, r = cur.rmc;
+  const rows = [
+    ["LXWP0 · Vario", cur.vario === null ? "–" : cur.vario.toFixed(2) + " m/s", age("vario")],
+    ["GGA · GPS", g ? "Fix " + v(g.quality) + " · " + v(g.sats) + " Sat · HDOP " + v(g.hdop) + " · " + v(g.alt, " m") : "–", age("gga")],
+    ["RMC · GPS", r ? (r.valid ? "A (gültig)" : "V (ungültig)") + " · " + v(r.speedKn, " kn") + " · " + v(r.course, "°") : "–", age("rmc")],
+    ["Puffer", "Vario " + varioBuf.length + " · Geschw. " + speedBuf.length, ""],
+    ["Zeilenrate", lineRate(now).toFixed(1) + " /s", ""],
+  ];
+  const html = rows.map(([k, val, a]) => `<span>${esc(k)}${a ? `<br><small class="hint">Alter ${esc(a)}</small>` : ""}</span><b>${esc(val)}</b>`).join("");
+  const host = $("dbgSources");
+  if (host.innerHTML !== html) host.innerHTML = html;
 }
 setInterval(render, 250);
 
@@ -1383,18 +1498,15 @@ function renderInterrupted() {
   for (const s of rec.interrupted) {
     const d = document.createElement("div");
     d.className = "notice"; d.style.marginBottom = "10px";
-    d.innerHTML = `<b>Unterbrochene Aufzeichnung gefunden</b><br>Start ${esc(new Date(s.start).toLocaleString("de-CH"))},
+    d.innerHTML = `<b>Unterbrochener Flug gefunden</b><br>Start ${esc(new Date(s.start).toLocaleString("de-CH"))},
       letzte Speicherung ${esc(new Date(s.lastT || s.start).toLocaleTimeString("de-CH"))}, ${s.lines} Zeilen.
-      <div class="row"><button class="r1">Fortsetzen</button><button class="secondary r2">Abschliessen</button></div>`;
-    d.querySelector(".r1").onclick = () => { if (rec.active) { log("Es läuft bereits eine Aufzeichnung.", "err"); return; } recStart(s).then(renderInterrupted); };
+      <div class="row"><button class="r1">Flug fortsetzen</button><button class="secondary r2">Abschliessen</button></div>`;
+    d.querySelector(".r1").onclick = () => { if (rec.active) { log("Es läuft bereits ein Flug.", "err"); return; } startFlight(s).then(renderInterrupted); };
     d.querySelector(".r2").onclick = () => closeInterrupted(s);
     host.appendChild(d);
   }
 }
 function renderRecInfo() {
-  const btn = $("recBtn");
-  btn.textContent = rec.active ? "Aufzeichnung stoppen" : "Aufzeichnung starten";
-  btn.classList.toggle("on", rec.active);
   $("recState").textContent = rec.active ? "läuft" : "aus";
   $("recState").className = rec.active ? "bad-t" : "";
   const s = rec.session;
@@ -1404,10 +1516,6 @@ function renderRecInfo() {
   $("recDb").textContent = rec.dbError ? "Fehler: " + rec.dbError : "IndexedDB, alle 2 s gesichert";
   $("recDb").className = rec.dbError ? "bad-t" : "";
 }
-$("recBtn").addEventListener("click", () => {
-  if (rec.active) { if (confirm("Aufzeichnung stoppen?")) recStop(); }
-  else recStart(null);
-});
 document.addEventListener("visibilitychange", () => { if (document.hidden) recFlush(); });
 window.addEventListener("pagehide", () => { recFlush(); });
 

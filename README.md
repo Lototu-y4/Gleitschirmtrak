@@ -5,6 +5,22 @@ Ergänzende Flug-Anzeige für das Vario XCTracer Mini V über Web Bluetooth, ged
 
 Online: <https://lototu-y4.github.io/Gleitschirmtrak/>
 
+## Bedienung
+
+- **Start:**
+  - Mit dem Vario verbinden und den Verbindungsstatus auf einen Blick sehen.
+  - „Flug starten“ öffnet die Fluganzeige und startet automatisch die Aufzeichnung.
+  - Während des Flugs stehen hier „Zur Fluganzeige“ und „Flug beenden“.
+  - Ein unterbrochener Flug (z. B. nach einem Neuladen) wird hier zum Fortsetzen angeboten.
+- **Fluganzeige:**
+  - Seiten „Flug“ und „Info“, durch seitliches Wischen oder über die Reiter unten zu wechseln.
+  - „Menü“ führt zurück zur Startseite, der Flug läuft dabei weiter.
+- **Einstellungen:** Berechnungsfenster, Anordnung der Kästen, Wake Lock, Offline-Cache.
+- **Debug:**
+  - Ausführlicher Verbindungsstatus, Datenquellen und Rohdaten
+  - Gespeicherte Aufzeichnungen mit Export als .txt und .igc
+  - Service-Liste und UUIDs
+
 ## Dateien
 
 | Datei | Zweck |
