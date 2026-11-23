@@ -301,6 +301,15 @@
     <button id="btnTestNoSvc" class="secondary">Test ohne Service-Liste</button>
     <label class="chk"><input type="checkbox" id="autoReconnect" checked> Nach Abbruch automatisch neu verbinden</label>
 
+    <h2>Diagnose-Bericht</h2>
+    <div class="hint">Fasst alles Wichtige zur Bluetooth-Verbindung und Datenübertragung zusammen: Schnittstelle, Verbindungsversuche mit Dauer, Fehler, Abbrüche, Datenlücken, Statistik pro Characteristic und die letzten Rohdaten. Enthält die zuletzt empfangene GPS-Position, aber nicht Pilot- und Schirmname.</div>
+    <div class="row">
+      <button id="btnDiagCopy">Bericht kopieren</button>
+      <button class="secondary" id="btnDiagShare">Teilen</button>
+    </div>
+    <div class="hint" id="diagState" style="margin-top:6px"></div>
+    <textarea id="diagText" readonly spellcheck="false" style="display:none; min-height:220px; font-size:11px"></textarea>
+
     <h2>Datenquellen</h2>
     <div class="card"><div class="kv" id="dbgSources"></div></div>
 
@@ -821,6 +830,31 @@ const subscribed = [];        // abonnierte Characteristics
 const lineBuffers = new Map(); // pro Characteristic: unvollständige Zeile
 let paused = false;
 
+/* ---------- Diagnose-Journal (für den kopierbaren Bericht, unabhängig von Pause und 200-Zeilen-Anzeige) ---------- */
+const DIAG_KEEP_HEAD = 120, DIAG_MAX_EVENTS = 900, DIAG_MAX_RAW = 80;
+const diag = {
+  t0: Date.now(),
+  events: [], eventsSkipped: 0,   // Ereignisse (sys/err); die ersten DIAG_KEEP_HEAD bleiben immer erhalten
+  raw: [],                        // letzte Rohdaten-Zeilen
+  avail: undefined, availAt: null,
+  attempts: 0, fastRejects: 0, lastAttempt: null,
+  connects: 0, connAt: 0, connPackets0: 0, dropTimes: [],
+  packets: 0, bytes: 0, lastPacketAt: 0, maxGap: 0, maxGapAt: null, gaps: [0, 0, 0],   // Lücken >1 s, >2 s, >5 s
+  chars: new Map(),               // pro Characteristic: Pakete, Bytes, Längen, letztes Paket
+  hiddenCount: 0, hiddenWhileConnected: 0,
+};
+function diagStamp(d = new Date()) { return ts(d); }
+function diagNote(text, cls, extraHtml) {
+  const extra = extraHtml ? " " + extraHtml.replace(/<[^>]*>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").trim() : "";
+  if (cls === "sys" || cls === "err") {
+    diag.events.push(diagStamp() + (cls === "err" ? " FEHLER " : " ") + text + extra);
+    if (diag.events.length > DIAG_MAX_EVENTS) { diag.events.splice(DIAG_KEEP_HEAD, 1); diag.eventsSkipped++; }
+  } else {
+    diag.raw.push(diagStamp() + " " + text + extra);
+    if (diag.raw.length > DIAG_MAX_RAW) diag.raw.shift();
+  }
+}
+
 function setConn(state) {
   connState = state;   // für Statusleiste und Instrumente
   const el = $("conn");
@@ -836,7 +870,8 @@ function ts(d = new Date()) {
 }
 function esc(s) { return s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
 function log(text, cls = "", extraHtml = "") {
-  if (cls === "err") showErrorBanner(text);   // Fehler auf jeder Seite im Klartext
+  diagNote(text, cls, extraHtml);
+  if (cls === "err") showErrorBanner(text);  // Fehler auf jeder Seite im Klartext
   if (paused && cls !== "sys" && cls !== "err") return;
   const div = document.createElement("div");
   div.innerHTML = `<span class="ts">${ts()}</span> <span class="${cls}">${esc(text)}</span>${extraHtml}`;
@@ -890,8 +925,8 @@ async function startupDiagnostics() {
   const native = /\{\s*\[native code\]\s*\}/.test(src);
   log("requestDevice ist " + (native ? "NATIV (vom Browser)" : "NICHT nativ (Polyfill/Erweiterung)") + ": " + src, "sys");
   if (typeof bt.getAvailability === "function") {
-    try { log("getAvailability(): " + JSON.stringify(await bt.getAvailability()), "sys"); }
-    catch (e) { log("getAvailability() Fehler: " + errText(e), "err"); }
+    try { diag.avail = await bt.getAvailability(); diag.availAt = new Date(); log("getAvailability(): " + JSON.stringify(diag.avail), "sys"); }
+    catch (e) { diag.avail = "Fehler: " + errText(e); diag.availAt = new Date(); log("getAvailability() Fehler: " + errText(e), "err"); }
   } else {
     log("getAvailability() nicht vorhanden (typeof " + typeof bt.getAvailability + ")", "sys");
   }
@@ -900,6 +935,9 @@ async function startupDiagnostics() {
 /* ---------- Verbinden ---------- */
 async function doConnect(withServices) {
   let stage = "UUID-Liste lesen";
+  let tReq = 0;
+  diag.attempts++;
+  diag.lastAttempt = { at: new Date(), withServices, result: "läuft …" };
   try {
     setConn("connecting");
     const options = { acceptAllDevices: true };
@@ -911,8 +949,9 @@ async function doConnect(withServices) {
     }
     log("requestDevice(" + JSON.stringify(options) + ") …", "sys");
     stage = "requestDevice";
+    tReq = performance.now();
     const dev = await bt.requestDevice(options);
-    log("Gerät gewählt: " + (dev.name || "(ohne Namen)") + " · id " + dev.id, "sys");
+    log("Gerät gewählt nach " + Math.round(performance.now() - tReq) + " ms: " + (dev.name || "(ohne Namen)") + " · id " + dev.id, "sys");
     if (device && device !== dev) device.removeEventListener("gattserverdisconnected", onDisconnected);
     device = dev;
     $("devName").textContent = device.name || "(ohne Namen)";
@@ -920,9 +959,18 @@ async function doConnect(withServices) {
     userDisconnect = false;
     stage = "gatt.connect / Services lesen";
     await connectGatt();
+    diag.lastAttempt.result = "verbunden";
   } catch (e) {
-    log("Fehler beim Verbinden (Schritt: " + stage + "): " + errText(e), "err");
+    let when = "";
+    if (stage === "requestDevice" && tReq) {
+      const ms = Math.round(performance.now() - tReq);
+      when = " nach " + ms + " ms";
+      if (ms < 300) { diag.fastRejects++; when += " (so schnell → Auswahlfenster ist vermutlich gar nicht erschienen)"; }
+    }
+    diag.lastAttempt.result = "Fehler bei " + stage + when + ": " + errText(e);
+    log("Fehler beim Verbinden (Schritt: " + stage + ")" + when + ": " + errText(e), "err");
     setConn(device && device.gatt && device.gatt.connected ? "connected" : "none");
+    refreshAvailability(true);   // Zustand direkt nach dem Fehler festhalten
   }
 }
 $("btnConnect").onclick = () => doConnect(true);
@@ -937,9 +985,11 @@ $("btnDisconnect").onclick = () => {
 async function connectGatt() {
   setConn("connecting");
   log("Verbinde mit GATT-Server …", "sys");
+  const t = performance.now();
   server = await device.gatt.connect();
   setConn("connected");
-  log("Verbunden mit " + (device.name || device.id), "sys");
+  diag.connects++; diag.connAt = performance.now(); diag.connPackets0 = diag.packets; diag.lastPacketAt = 0;
+  log("Verbunden mit " + (device.name || device.id) + " nach " + Math.round(diag.connAt - t) + " ms (Verbindung Nr. " + diag.connects + ")", "sys");
   await discover();
 }
 
@@ -947,6 +997,14 @@ function onDisconnected() {
   setConn("disconnected");
   subscribed.length = 0;
   lineBuffers.clear();
+  if (diag.connAt) {
+    const now = performance.now();
+    log("Verbindung bestand " + ((now - diag.connAt) / 1000).toFixed(1) + " s · " + (diag.packets - diag.connPackets0) + " Pakete"
+        + " · letztes Paket vor " + (diag.lastPacketAt ? ((now - diag.lastPacketAt) / 1000).toFixed(1) + " s" : "– (nie)")
+        + " · Seite " + (document.hidden ? "im Hintergrund" : "im Vordergrund"), "sys");
+    diag.connAt = 0;
+  }
+  if (!userDisconnect) { diag.dropTimes.push(ts()); if (diag.dropTimes.length > 50) diag.dropTimes.shift(); }
   if (userDisconnect) { log("Verbindung vom Benutzer getrennt.", "sys"); return; }
   dropCount++; lastDropAt = new Date();
   log("VERBINDUNGSABBRUCH Nr. " + dropCount, "err");
@@ -991,7 +1049,12 @@ async function discover() {
     host.appendChild(box);
     let chars = [];
     try { chars = await svc.getCharacteristics(); }
-    catch (e) { box.insertAdjacentHTML("beforeend", `<div class="err">Characteristics nicht lesbar: ${esc(errText(e))}</div>`); continue; }
+    catch (e) {
+      box.insertAdjacentHTML("beforeend", `<div class="err">Characteristics nicht lesbar: ${esc(errText(e))}</div>`);
+      log("Service " + svc.uuid + ": Characteristics nicht lesbar: " + errText(e), "sys");
+      continue;
+    }
+    log("Service " + svc.uuid + ": " + chars.map(c => c.uuid + " [" + propsOf(c.properties) + "]").join(" · "), "sys");
 
     for (const ch of chars) {
       const cdiv = document.createElement("div");
@@ -1006,7 +1069,8 @@ async function discover() {
           const v = await ch.readValue();
           const b = new Uint8Array(v.buffer, v.byteOffset, v.byteLength);
           cdiv.insertAdjacentHTML("beforeend", `<div class="nraw">Gelesen: ${esc(decodePreview(b))}</div>`);
-        } catch (e) { /* Lesen ist nur Zusatzinfo */ }
+          log("Gelesen " + ch.uuid + ": " + decodePreview(b), "sys");
+        } catch (e) { log("Lesen " + ch.uuid + " nicht möglich: " + errText(e), "sys"); /* nur Zusatzinfo */ }
       }
 
       if (ch.properties && (ch.properties.notify || ch.properties.indicate)) {
@@ -1038,6 +1102,22 @@ function onData(key, dataView, stat) {
   const bytes = new Uint8Array(dataView.buffer, dataView.byteOffset, dataView.byteLength);
   const now = performance.now();
   msgCount++; lastMsgAt = now; rateWindow.push(now);
+
+  // Statistik für den Diagnose-Bericht
+  diag.packets++; diag.bytes += bytes.length;
+  if (diag.lastPacketAt) {
+    const gap = now - diag.lastPacketAt;
+    if (gap > diag.maxGap) { diag.maxGap = gap; diag.maxGapAt = ts(); }
+    if (gap > 1000) diag.gaps[0]++;
+    if (gap > 2000) { diag.gaps[1]++; log("Datenlücke " + (gap / 1000).toFixed(1) + " s [" + shortKey(key) + "]" + (document.hidden ? " (Seite im Hintergrund)" : ""), "sys"); }
+    if (gap > 5000) diag.gaps[2]++;
+  }
+  diag.lastPacketAt = now;
+  let cs = diag.chars.get(key);
+  if (!cs) { cs = { packets: 0, bytes: 0, minLen: Infinity, maxLen: 0, first: ts(), last: 0, preview: "" }; diag.chars.set(key, cs); }
+  cs.packets++; cs.bytes += bytes.length; cs.last = now;
+  cs.minLen = Math.min(cs.minLen, bytes.length); cs.maxLen = Math.max(cs.maxLen, bytes.length);
+  cs.preview = decodePreview(bytes);
 
   stat.count++;
   stat.el.textContent = stat.count + " Pakete, zuletzt " + ts();
@@ -1077,7 +1157,7 @@ function handleLine(line, key) {
 /* =====================================================================
    FLUG-ANZEIGE
    ===================================================================== */
-const APP_VERSION = "2026-11-23.3";
+const APP_VERSION = "2026-11-23.4";
 const STALE_MS = 2000;          // ohne neue Daten länger als das → „keine Daten“
 const HOLD_MS = 2000;           // ein Messwert gilt höchstens so lange (Lücken zählen nicht)
 const MIN_COVERAGE = 0.9;       // Fenster gilt als gefüllt ab 90 % Abdeckung
@@ -2099,8 +2179,187 @@ startupDiagnostics();
 
 // Hinweis: iOS pausiert Seiten im Hintergrund – Abbrüche dann nicht dem Gerät anlasten.
 document.addEventListener("visibilitychange", () => {
+  if (document.hidden) { diag.hiddenCount++; if (connState === "connected") diag.hiddenWhileConnected++; }
   log(document.hidden ? "Seite im Hintergrund (iOS kann Bluetooth pausieren)" : "Seite wieder im Vordergrund", "sys");
+  if (!document.hidden) refreshAvailability(true);
 });
+
+/* =====================================================================
+   DIAGNOSE-BERICHT (kopierbar)
+   ===================================================================== */
+// Bluetooth-Verfügbarkeit regelmässig nachführen; der Bericht selbst wird synchron gebaut,
+// damit das Kopieren noch innerhalb des Tippens passiert (sonst blockiert iOS die Zwischenablage).
+function refreshAvailability(logAlways) {
+  if (!bt || typeof bt.getAvailability !== "function") return;
+  const before = diag.avail;
+  Promise.race([bt.getAvailability(), new Promise((_, rej) => setTimeout(() => rej(new Error("keine Antwort nach 3 s")), 3000))])
+    .then((v) => { diag.avail = v; diag.availAt = new Date(); if (logAlways || v !== before) log("getAvailability(): " + JSON.stringify(v), "sys"); })
+    .catch((e) => { diag.avail = "Fehler: " + errText(e); diag.availAt = new Date(); log("getAvailability() Fehler: " + errText(e), "sys"); });
+}
+setInterval(() => { if (connState !== "connected") refreshAvailability(false); }, 15000);
+if (bt) {
+  try {
+    if (typeof bt.addEventListener === "function")
+      bt.addEventListener("availabilitychanged", (e) => { diag.avail = e.value; diag.availAt = new Date(); log("Ereignis availabilitychanged: " + JSON.stringify(e.value), "sys"); });
+  } catch (e) { log("availabilitychanged nicht abonnierbar: " + errText(e), "sys"); }
+}
+window.addEventListener("online", () => log("Netz: online", "sys"));
+window.addEventListener("offline", () => log("Netz: offline", "sys"));
+window.addEventListener("pagehide", () => log("pagehide", "sys"));
+window.addEventListener("pageshow", (e) => log("pageshow" + (e.persisted ? " (aus Zwischenspeicher)" : ""), "sys"));
+
+function btMembers() {
+  if (!bt) return "–";
+  const seen = [], add = (o) => { try { for (const k of Object.getOwnPropertyNames(o)) if (!seen.includes(k)) seen.push(k); } catch (e) {} };
+  for (let o = bt, i = 0; o && o !== Object.prototype && i < 5; o = Object.getPrototypeOf(o), i++) add(o);
+  return seen.filter(k => k !== "constructor").map(k => { let t; try { t = typeof bt[k]; } catch (e) { t = "?"; } return k + ":" + t; }).join(", ");
+}
+function fnFull(fn, max) {
+  try { const s = String(fn).replace(/\s+/g, " "); return s.length > max ? s.slice(0, max) + " … (" + s.length + " Zeichen)" : s; }
+  catch (e) { return "(nicht lesbar)"; }
+}
+function secAgo(t, now) { return t ? ((now - t) / 1000).toFixed(1) + " s" : "nie"; }
+
+function diagFindings(now) {
+  const f = [];
+  if (!bt) f.push("Keine Bluetooth-Schnittstelle (navigator.bluetooth fehlt).");
+  if (diag.avail === false) f.push("getAvailability() = false: Der Browser hält Bluetooth für nicht verfügbar.");
+  if (diag.fastRejects) f.push(diag.fastRejects + "× wurde requestDevice in < 300 ms abgelehnt → das Auswahlfenster ist nie erschienen (Ablehnung durch Browser/Polyfill, nicht durch das Gerät).");
+  if (diag.attempts && !diag.connects) f.push("Noch keine erfolgreiche Verbindung (" + diag.attempts + " Versuche).");
+  if (dropCount) f.push(dropCount + " Verbindungsabbrüche (" + diag.dropTimes.join(", ") + ").");
+  if (connState === "connected" && diag.packets === diag.connPackets0 && diag.connAt && now - diag.connAt > 3000)
+    f.push("Verbunden, aber seit " + ((now - diag.connAt) / 1000).toFixed(0) + " s keine Daten – Notifications prüfen.");
+  if (diag.gaps[1]) f.push(diag.gaps[1] + " Datenlücken > 2 s, längste " + (diag.maxGap / 1000).toFixed(1) + " s um " + diag.maxGapAt + ".");
+  const bad = stats.bad.bad + stats.bad.nocs + stats.bad.format;
+  if (stats.lines > 50 && bad / stats.lines > 0.02) f.push("Viele verworfene Zeilen: " + bad + " von " + stats.lines + " (" + (100 * bad / stats.lines).toFixed(1) + " %).");
+  if (diag.hiddenWhileConnected) f.push("Seite war " + diag.hiddenWhileConnected + "× während der Verbindung im Hintergrund.");
+  return f.length ? f : ["keine"];
+}
+
+function buildDiagReport() {
+  const now = performance.now(), L = [];
+  const sec = (t) => L.push("", "== " + t + " ==");
+  const kv = (k, v) => L.push(k + ": " + (v === undefined || v === null || v === "" ? "–" : v));
+  const d = new Date();
+  L.push("FLUG-ANZEIGE · DIAGNOSE-BERICHT");
+  kv("Erstellt", d.toLocaleString("de-CH") + " (" + d.toISOString() + ")");
+  kv("App-Version", APP_VERSION);
+  kv("Seite offen seit", Core.fmtDuration(Date.now() - diag.t0));
+  kv("Adresse", location.origin + location.pathname);
+
+  sec("Auffälligkeiten");
+  for (const x of diagFindings(now)) L.push("- " + x);
+
+  sec("Browser");
+  kv("User-Agent", navigator.userAgent);
+  kv("isSecureContext", window.isSecureContext);
+  kv("Als App gestartet (standalone)", !!(navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches)));
+  kv("Online", navigator.onLine);
+  kv("Sichtbar", !document.hidden + " · im Hintergrund gewesen: " + diag.hiddenCount + "×");
+  kv("Bildschirm", screen.width + "×" + screen.height + " @" + (window.devicePixelRatio || 1) + " · Fenster " + innerWidth + "×" + innerHeight);
+  kv("Sprache", navigator.language);
+  kv("Wake Lock", wakeState);
+  kv("Offline-Cache", swState);
+
+  sec("Bluetooth-Schnittstelle");
+  kv("Schnittstelle", bt ? apiName : "keine");
+  kv("navigator.bluetooth / webble", (navigator.bluetooth ? "ja" : "nein") + " / " + (navigator.webble ? "ja" : "nein"));
+  if (bt) {
+    kv("getAvailability()", JSON.stringify(diag.avail) + (diag.availAt ? " (abgefragt " + diag.availAt.toLocaleTimeString("de-CH", { hour12: false }) + ")" : ""));
+    kv("Mitglieder", btMembers());
+    kv("requestDevice nativ", /\{\s*\[native code\]\s*\}/.test(fnFull(bt.requestDevice, 200)) ? "ja" : "nein (Polyfill)");
+    kv("requestDevice-Quelltext", fnFull(bt.requestDevice, 2500));
+    if (typeof bt.getAvailability === "function") kv("getAvailability-Quelltext", fnFull(bt.getAvailability, 800));
+  }
+
+  sec("Verbindung");
+  kv("Zustand", connState);
+  kv("Gerät", device ? (device.name || "(ohne Namen)") + " · id " + device.id : "–");
+  kv("gatt.connected", device && device.gatt ? device.gatt.connected : "–");
+  kv("Versuche · erfolgreiche Verbindungen · Abbrüche", diag.attempts + " · " + diag.connects + " · " + dropCount);
+  kv("Letzter Versuch", diag.lastAttempt ? diag.lastAttempt.at.toLocaleTimeString("de-CH", { hour12: false })
+     + (diag.lastAttempt.withServices ? " (mit Service-Liste)" : " (ohne Service-Liste)") + ": " + diag.lastAttempt.result : "–");
+  kv("Aktuelle Verbindung besteht seit", diag.connAt ? ((now - diag.connAt) / 1000).toFixed(1) + " s" : "–");
+  kv("Abbrüche um", diag.dropTimes.join(", "));
+  kv("Automatisch neu verbinden", $("autoReconnect").checked);
+  kv("Abonnierte Characteristics", subscribed.map(c => c.uuid).join(", "));
+
+  sec("Datenübertragung");
+  kv("Pakete · Bytes · Ø Paketgrösse", diag.packets + " · " + diag.bytes + " · " + (diag.packets ? (diag.bytes / diag.packets).toFixed(1) : "–"));
+  kv("Letztes Paket vor", secAgo(diag.lastPacketAt || lastMsgAt, now));
+  kv("Pakete/s (5 s)", (rateWindow.length / 5).toFixed(1));
+  kv("Zeilen · Zeilen/s", stats.lines + " · " + lineRate(now).toFixed(1));
+  kv("Verworfen", "Prüfsumme falsch " + stats.bad.bad + " · ohne Prüfsumme " + stats.bad.nocs + " · unlesbar " + stats.bad.format);
+  kv("Satzarten", "GGA " + stats.types.gga + " · RMC " + stats.types.rmc + " · LXWP0 " + stats.types.lxwp0 + " · andere " + stats.types.other);
+  kv("Lücken > 1 s · > 2 s · > 5 s", diag.gaps.join(" · ") + " · längste " + (diag.maxGap / 1000).toFixed(2) + " s" + (diag.maxGapAt ? " um " + diag.maxGapAt : ""));
+  for (const [key, c] of diag.chars) {
+    L.push("Characteristic " + key);
+    L.push("    " + c.packets + " Pakete · " + c.bytes + " Bytes · Länge " + c.minLen + "–" + c.maxLen + " · erstes " + c.first + " · letztes vor " + secAgo(c.last, now));
+    L.push("    zuletzt: " + c.preview);
+  }
+
+  sec("Messwerte");
+  const g = cur.gga, r = cur.rmc;
+  kv("LXWP0 Vario", (cur.vario === null ? "–" : cur.vario.toFixed(2) + " m/s") + " · Alter " + secAgo(tLast.vario > 0 ? tLast.vario : 0, now));
+  kv("GGA", g ? "Fix " + g.quality + " · " + g.sats + " Sat · HDOP " + g.hdop + " · Höhe " + g.alt + " m · " + g.lat + ", " + g.lon : "–");
+  kv("RMC", r ? (r.valid ? "gültig" : "ungültig") + " · " + r.speedKn + " kn · " + r.course + "°" : "–");
+  kv("Gelände", terrainDebugText());
+
+  sec("Einstellungen");
+  kv("Service-UUIDs", parseUuidList(uuidBox.value, () => {}).join(", "));
+  const s = Object.assign({}, settings); delete s.pilot; delete s.glider;
+  kv("Anzeige", JSON.stringify(s));
+  kv("Aufzeichnung", rec.active ? "läuft · " + rec.lines.length + " Zeilen im Puffer" : "aus");
+
+  sec("Ereignisse (" + diag.events.length + (diag.eventsSkipped ? ", " + diag.eventsSkipped + " ältere ausgelassen" : "") + ")");
+  diag.events.forEach((e, i) => {
+    if (diag.eventsSkipped && i === DIAG_KEEP_HEAD) L.push("… " + diag.eventsSkipped + " Ereignisse ausgelassen …");
+    L.push(e);
+  });
+
+  sec("Letzte Rohdaten (" + diag.raw.length + ")");
+  for (const x of diag.raw) L.push(x);
+  L.push("", "== Ende ==");
+  return L.join("\n");
+}
+
+function showDiagText(text) {
+  const ta = $("diagText");
+  ta.value = text; ta.style.display = "";
+  return ta;
+}
+function copyViaTextarea(ta) {
+  try {
+    ta.removeAttribute("readonly"); ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length);
+    const ok = document.execCommand("copy");
+    ta.setAttribute("readonly", ""); ta.blur();
+    return ok;
+  } catch (e) { ta.setAttribute("readonly", ""); return false; }
+}
+$("btnDiagCopy").onclick = () => {
+  let text;
+  try { text = buildDiagReport(); }
+  catch (e) { log("Diagnose-Bericht: " + errText(e), "err"); return; }
+  const ta = showDiagText(text);
+  const st = $("diagState");
+  const done = (ok, how) => {
+    st.textContent = ok ? "Kopiert (" + text.length + " Zeichen" + how + "). Jetzt in die Nachricht einfügen."
+                        : "Automatisches Kopieren ging nicht: Ins Feld tippen, „Alles auswählen“ und „Kopieren“ wählen.";
+    log("Diagnose-Bericht erstellt (" + text.length + " Zeichen, " + (ok ? "kopiert" : "nicht kopiert") + ")", "sys");
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => done(true, ""), () => done(copyViaTextarea(ta), ", über Textfeld"));
+  } else done(copyViaTextarea(ta), ", über Textfeld");
+};
+if (navigator.share) {
+  $("btnDiagShare").onclick = () => {
+    const text = buildDiagReport();
+    showDiagText(text);
+    navigator.share({ title: "Flug-Anzeige Diagnose " + APP_VERSION, text }).catch((e) => {
+      if (e && e.name !== "AbortError") $("diagState").textContent = "Teilen ging nicht: " + errText(e);
+    });
+  };
+} else $("btnDiagShare").style.display = "none";
 </script>
 </body>
 </html>
