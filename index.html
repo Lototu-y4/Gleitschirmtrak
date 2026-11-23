@@ -8,48 +8,77 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>Flug-Anzeige XCTracer</title>
+<script>
+/* Darstellung vor dem ersten Zeichnen setzen (kein Aufblitzen): Einstellung "theme" = auto | light | dark */
+(function () {
+  var t = "auto";
+  try { var s = JSON.parse(localStorage.getItem("flugapp.settings.v1") || "null"); if (s && (s.theme === "light" || s.theme === "dark")) t = s.theme; } catch (e) {}
+  if (t === "auto") t = window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", t);
+})();
+</script>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23000'/%3E%3Cpath d='M8 40 Q32 8 56 40' stroke='%2334e07a' stroke-width='6' fill='none'/%3E%3Cpath d='M32 22v28' stroke='%23fff' stroke-width='4'/%3E%3C/svg%3E">
 <style>
-  :root {
-    --bg: #000; --panel: #12161c; --panel2: #1b2129; --line: #3a424d; --text: #f2f5f8; --dim: #a7b0ba;
-    --ok: #34e07a; --warn: #ffb020; --bad: #ff5a5a; --info: #5ab0ff;
+  /* ---------- Farben (Variante C) ----------
+     Dunkel = Standard, Hell über data-theme="light" am <html>-Element (gesetzt im Kopf-Skript und in applyTheme). */
+  :root, :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #000; --card: #15171b; --line: #2c3038; --text: #fff; --label: #b3bac3; --dim: #a1a8b2;
+    --ok: #34e07a; --warn: #ffb020; --bad: #ff6b6b; --info: #60a5fa;
     --pos: #34e07a; --neg: #ff6b6b;
+    --c-vert: #2dd4bf; --c-alt: #a78bfa; --c-move: #60a5fa; --c-time: #a1a8b2;
+    --accent: #fff; --accent-text: #000; --flag-bg: #ffb020;
+    --ok-bg: #0b2614; --warn-bg: #2b2108; --bad-bg: #331010; --notice-text: #ffd98a;
+    --danger-bg: #3a1010; --danger-text: #ff9a9a; --raw-bg: #05080c; --raw-bad: #ff9a9a;
     --sbar-h: 38px; --tabs-h: 64px;
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #e6e9ed; --card: #fff; --line: #d5dae0; --text: #000; --label: #4f5864; --dim: #5f6873;
+    --ok: #0a8a3a; --warn: #a86300; --bad: #cf2e2e; --info: #2563eb;
+    --pos: #0a8a3a; --neg: #cf2e2e;
+    --c-vert: #0f8a7e; --c-alt: #7346d9; --c-move: #2563eb; --c-time: #5f6873;
+    --accent: #000; --accent-text: #fff; --flag-bg: #ffd27a;
+    --ok-bg: #e3f5ea; --warn-bg: #fff1d1; --bad-bg: #fde7e7; --notice-text: #6b4600;
+    --danger-bg: #fde7e7; --danger-text: #b42323; --raw-bg: #f6f7f9; --raw-bad: #b42323;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   /* Kein Überscrollen / Pull-to-Refresh: Seite selbst ist fixiert, nur Innenbereiche scrollen. */
   html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; background: var(--bg); color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 18px; }
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 18px; -webkit-font-smoothing: antialiased; }
   body { position: fixed; inset: 0; display: flex; flex-direction: column; touch-action: manipulation;
     -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-text-size-adjust: 100%; }
-  h2 { font-size: 1rem; margin: 22px 0 8px; color: var(--dim); text-transform: uppercase; letter-spacing: .04em; }
+  h2 { font-size: 1rem; font-weight: 700; margin: 24px 2px 8px; color: var(--label); }
   h2:first-child { margin-top: 4px; }
 
   /* ---------- Statusleiste oben ---------- */
-  #sbar { flex: none; height: calc(var(--sbar-h) + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 10px 0;
-    display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 17px; background: #111;
-    border-bottom: 2px solid var(--line); white-space: nowrap; overflow: hidden; font-variant-numeric: tabular-nums; }
-  #sbar .dot { font-size: 20px; }
-  #sbar.st-ok { background: #0b1f12; border-color: #1f6b3a; } #sbar.st-ok .dot { color: var(--ok); }
-  #sbar.st-stale { background: #3a2a00; border-color: var(--warn); } #sbar.st-stale .dot { color: var(--warn); }
-  #sbar.st-bad { background: #3a0d0d; border-color: var(--bad); } #sbar.st-bad .dot { color: var(--bad); }
-  #sbar.st-busy .dot { color: var(--warn); }
+  #sbar { flex: none; height: calc(var(--sbar-h) + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 12px 0;
+    display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; background: var(--bg); color: var(--text);
+    white-space: nowrap; overflow: hidden; font-variant-numeric: tabular-nums; }
+  #sbar .dot { width: 11px; height: 11px; border-radius: 50%; flex: none; background: var(--dim); }
+  #sbar.st-ok .dot { background: var(--ok); }
+  #sbar.st-stale { background: var(--warn-bg); } #sbar.st-stale .dot { background: var(--warn); }
+  #sbar.st-bad { background: var(--bad-bg); } #sbar.st-bad .dot { background: var(--bad); }
+  #sbar.st-busy .dot { background: var(--warn); }
   #sbar .grow { flex: 1; overflow: hidden; text-overflow: ellipsis; }
-  #sbRec { color: var(--bad); } #sbRec.warn { color: var(--warn); }
+  #sbAge, #sbRate { color: var(--dim); font-weight: 600; }
+  #sbRec { color: var(--neg); display: inline-flex; align-items: center; gap: 5px; }
+  #sbRec.on::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
+  #sbRec.warn { color: var(--warn); }
 
   #errbar { position: absolute; left: 6px; right: 6px; top: calc(var(--sbar-h) + env(safe-area-inset-top) + 4px); z-index: 50;
-    display: none; gap: 8px; align-items: flex-start; background: #5a0f0f; border: 2px solid var(--bad); border-radius: 10px;
+    display: none; gap: 8px; align-items: flex-start; background: var(--bad-bg); color: var(--text); border: 2px solid var(--bad); border-radius: 12px;
     padding: 8px 10px; font-size: 15px; font-weight: 600; -webkit-user-select: text; user-select: text; }
   #errbar.show { display: flex; }
   #errText { flex: 1; word-break: break-word; max-height: 4.5em; overflow: hidden; }
-  #errClose { width: 48px; height: 40px; margin: 0; padding: 0; flex: none; background: #000; color: #fff; border: 1px solid var(--bad); }
+  #errClose { width: 48px; height: 40px; margin: 0; padding: 0; flex: none; background: var(--card); color: var(--text); border: 1px solid var(--bad); }
 
   /* ---------- Seiten ---------- */
   main { flex: 1; min-height: 0; position: relative; }
   .page { position: absolute; inset: 0; display: none; }
   .page.active { display: block; }
-  .page.scroll { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 10px 12px 24px; }
+  .page.scroll { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 8px 10px 24px; }
   /* Flugmodus: Seiten nebeneinander, natives seitliches Scrollen mit Einrasten */
   .swiper { display: flex; height: 100%; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory;
     overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scrollbar-width: none; touch-action: pan-x; }
@@ -58,84 +87,97 @@
 
   /* ---------- Reiter unten ---------- */
   .tabbar { flex: none; display: flex; height: calc(var(--tabs-h) + env(safe-area-inset-bottom));
-    padding-bottom: env(safe-area-inset-bottom); background: #111; border-top: 2px solid var(--line); }
-  .tabbar button { flex: 1; margin: 0; padding: 2px 1px; min-height: 0; border-radius: 0; background: transparent; color: var(--dim);
-    font-size: 17px; font-weight: 800; line-height: 1.1; border-right: 1px solid #222; width: auto; }
-  .tabbar button.on { color: #000; background: var(--text); }
+    padding-bottom: env(safe-area-inset-bottom); background: var(--card); border-top: 1px solid var(--line); }
+  .tabbar button { flex: 1; margin: 0; padding: 2px 1px; min-height: 0; border-radius: 0; background: transparent; color: var(--label);
+    font-size: 17px; font-weight: 750; line-height: 1.1; border: 0; width: auto; }
+  .tabbar button.on { color: var(--accent-text); background: var(--accent); }
   .tabbar button.menu { flex: 0.8; color: var(--text); }
   #ftabs { display: none; }
   body.flying #tabs { display: none; }
   body.flying #ftabs { display: flex; }
 
   /* ---------- Startseite ---------- */
-  .bigstat { border-radius: 14px; padding: 18px 14px; margin-bottom: 4px; border: 2px solid var(--line); text-align: center; }
-  .bigstat .bs-main { font-size: 34px; font-weight: 900; line-height: 1.1; }
-  .bigstat .bs-sub { font-size: 17px; font-weight: 600; color: var(--dim); margin-top: 6px; }
-  .bigstat.st-ok { background: #0b2614; border-color: var(--ok); } .bigstat.st-ok .bs-main { color: var(--ok); }
-  .bigstat.st-stale { background: #2e2200; border-color: var(--warn); } .bigstat.st-stale .bs-main { color: var(--warn); }
-  .bigstat.st-bad { background: #2a0c0c; border-color: var(--bad); } .bigstat.st-bad .bs-main { color: var(--bad); }
-  button.go { background: var(--ok); color: #000; margin-top: 12px; }
+  .bigstat { border-radius: 14px; padding: 18px 16px; margin-bottom: 4px; background: var(--card); border: 2px solid var(--card); }
+  .bigstat .bs-main { display: flex; align-items: center; gap: 12px; font-size: 32px; font-weight: 800; line-height: 1.1; letter-spacing: -0.01em; }
+  .bigstat .bs-main::before { content: ""; flex: none; width: 15px; height: 15px; border-radius: 50%; background: currentColor;
+    box-shadow: 0 0 0 5px color-mix(in srgb, currentColor 22%, transparent); }
+  .bigstat .bs-sub { font-size: 17px; font-weight: 600; color: var(--dim); margin-top: 8px; }
+  .bigstat.st-ok .bs-main { color: var(--ok); }
+  .bigstat.st-stale { border-color: var(--warn); } .bigstat.st-stale .bs-main { color: var(--warn); }
+  .bigstat.st-bad { border-color: var(--bad); } .bigstat.st-bad .bs-main { color: var(--bad); }
+  button.go { margin-top: 12px; }
 
   /* ---------- Instrument-Kästen ---------- */
   .igrid { display: grid; gap: 4px; height: 100%; }
-  .ibox { position: relative; container-type: size; background: #000; border: 2px solid #2c333c; border-radius: 10px;
-    display: flex; flex-direction: column; padding: 4px 8px 4px; min-width: 0; min-height: 0; overflow: hidden; }
-  .ibox .lbl { display: flex; align-items: center; gap: 6px; font-size: 16px; font-weight: 800; color: #d5dbe2; line-height: 1.15; }
-  .ibox .lbl { align-items: flex-start; }
-  .ibox .lbl .name { flex: 1; min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-  .ibox .lbl .unit { color: var(--dim); font-weight: 700; }
-  .ibox .flag { display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2;
-    background: var(--warn); color: #000; font-size: 17px; font-weight: 900; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
-  .ibox .val { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-  .ibox .num { display: inline-block; white-space: nowrap; font-weight: 800; line-height: 1; letter-spacing: -0.02em;
-    font-variant-numeric: tabular-nums; font-size: 64px; font-size: min(34cqw, 60cqh); }
-  .ibox.long .num { font-size: 40px; font-size: min(19cqw, 42cqh); }
+  .ibox { position: relative; container-type: size; background: var(--card); border: 1.5px solid var(--card); border-radius: 12px;
+    display: flex; flex-direction: column; padding: 7px 10px 5px; min-width: 0; min-height: 0; overflow: hidden; }
+  .ibox.hasbar { padding-right: 26px; }
+  .ibox .lbl { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 650; color: var(--label); line-height: 1.15; min-height: 21px; }
+  .ibox .ic { width: 18px; height: 18px; flex: none; display: inline-flex; color: var(--c-time); }
+  .ibox .ic svg { width: 100%; height: 100%; transition: transform .4s ease; }
+  .ibox[data-cat="vert"] .ic { color: var(--c-vert); }
+  .ibox[data-cat="alt"] .ic { color: var(--c-alt); }
+  .ibox[data-cat="move"] .ic { color: var(--c-move); }
+  .ibox .lbl .name { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .ibox .lbl .unit { color: var(--label); font-weight: 700; flex: none; }
+  .ibox .flag { display: none; position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%); z-index: 2;
+    background: var(--flag-bg); color: #000; font-size: 15px; font-weight: 800; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .ibox .val { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: flex-start; overflow: hidden; }
+  .ibox .num { display: inline-block; white-space: nowrap; font-weight: 800; line-height: 1; letter-spacing: -0.025em; color: var(--text);
+    font-variant-numeric: tabular-nums; font-size: 64px; font-size: min(38cqw, 62cqh); }
+  .ibox.long .num { font-size: 40px; font-size: min(22cqw, 48cqh); }
   .ibox.text .num { font-size: 30px; font-size: min(15cqw, 32cqh); }
-  .ibox .sub { font-size: 15px; font-weight: 700; color: var(--dim); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 1.15em; }
+  .ibox .sub { font-size: 14px; font-weight: 600; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 1.2em; }
   .ibox.t-pos .num { color: var(--pos); } .ibox.t-neg .num { color: var(--neg); }
   .ibox.t-ok .num { color: var(--ok); } .ibox.t-warn .num { color: var(--warn); } .ibox.t-bad .num { color: var(--bad); }
+  /* Steigbalken am rechten Rand: Mitte = 0, ganz oben/unten = ±5 m/s */
+  .vbar { position: absolute; right: 8px; top: 10px; bottom: 10px; width: 9px; border-radius: 5px; background: color-mix(in srgb, var(--dim) 22%, transparent); }
+  .vbar::before { content: ""; position: absolute; left: -3px; right: -3px; top: 50%; height: 2px; margin-top: -1px; background: var(--dim); border-radius: 1px; }
+  .vbar i { position: absolute; left: 0; right: 0; height: 0; border-radius: 5px; }
+  .ibox.t-pos .vbar i { background: var(--pos); bottom: 50%; }
+  .ibox.t-neg .vbar i { background: var(--neg); top: 50%; }
   .ibox.stale { border-color: var(--warn); border-style: dashed; }
-  .ibox.stale .num, .ibox.stale .sub, .ibox.stale .lbl .unit { opacity: .25; }
+  .ibox.stale .num, .ibox.stale .sub, .ibox.stale .vbar i { opacity: .3; }
   .ibox.stale .num { color: var(--text) !important; }
   .ibox.stale .flag { display: inline-block; }
 
   /* ---------- Allgemeine Bedienelemente ---------- */
-  button { font-size: 1.1rem; font-weight: 800; border: 0; border-radius: 12px; padding: 14px; min-height: 56px; width: 100%;
-    background: var(--info); color: #000; margin-top: 8px; touch-action: manipulation; }
-  button.secondary { background: var(--panel2); color: var(--text); border: 1px solid var(--line); }
-  button.danger { background: #5a0f0f; color: #fff; border: 1px solid var(--bad); }
+  button { font-size: 1.1rem; font-weight: 750; border: 0; border-radius: 12px; padding: 14px; min-height: 56px; width: 100%;
+    background: var(--accent); color: var(--accent-text); margin-top: 8px; touch-action: manipulation; }
+  button.secondary { background: var(--card); color: var(--text); border: 1.5px solid var(--line); }
+  button.danger { background: var(--danger-bg); color: var(--danger-text); border: 1.5px solid var(--bad); }
   button.big { min-height: 80px; font-size: 1.4rem; }
   button:disabled { opacity: .4; }
   .row { display: flex; gap: 8px; } .row > * { flex: 1; }
   textarea { width: 100%; min-height: 110px; font: 16px ui-monospace, Menlo, monospace; color: var(--text);
-    background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px; -webkit-user-select: text; user-select: text; }
-  input, select { font-size: 18px; color: var(--text); background: var(--panel2); border: 1px solid var(--line); border-radius: 10px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px; -webkit-user-select: text; user-select: text; }
+  input, select { font-size: 18px; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 10px;
     padding: 10px; min-height: 50px; -webkit-user-select: text; user-select: text; }
   select { width: 100%; }
   label.chk { display: flex; align-items: center; gap: 10px; font-size: 1rem; color: var(--text); margin-top: 10px; min-height: 44px; }
-  label.chk input { width: 28px; height: 28px; min-height: 0; }
+  label.chk input { width: 28px; height: 28px; min-height: 0; accent-color: var(--info); }
   .field { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
   .field > span { flex: 1; } .field input { width: 110px; text-align: right; }
   .hint { font-size: .85rem; color: var(--dim); }
-  .notice { background: #2a2200; border: 1px solid var(--warn); color: #ffe2a0; border-radius: 10px; padding: 10px 12px; font-size: .95rem; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; }
+  .notice { background: var(--warn-bg); color: var(--notice-text); border-radius: 12px; padding: 10px 12px; font-size: .95rem; font-weight: 500; }
+  .card { background: var(--card); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; }
   .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 1rem; }
   .kv b { text-align: right; font-variant-numeric: tabular-nums; }
   .ok-t { color: var(--ok); } .warn-t { color: var(--warn); } .bad-t { color: var(--bad); }
 
   /* ---------- Verbinden (bisheriger Teil) ---------- */
-  .api { margin: 0 0 8px; padding: 10px 12px; border-radius: 10px; font-weight: 700; }
-  .api.ok { background: #0b2614; color: var(--ok); }
-  .api.bad { background: #3a1416; color: var(--bad); }
+  .api { margin: 0 0 8px; padding: 10px 12px; border-radius: 12px; font-weight: 700; }
+  .api.ok { background: var(--ok-bg); color: var(--ok); }
+  .api.bad { background: var(--bad-bg); color: var(--bad); }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-  .cell { background: var(--panel); border-radius: 10px; padding: 6px 10px; }
+  .cell { background: var(--card); border-radius: 12px; padding: 6px 10px; }
   .cell .k { font-size: .75rem; color: var(--dim); }
   .cell .v { font-size: 1.3rem; font-weight: 800; font-variant-numeric: tabular-nums; word-break: break-all; }
   .cell.wide { grid-column: 1 / -1; }
   #conn.s-none { color: var(--dim); } #conn.s-connecting { color: var(--warn); }
   #conn.s-connected { color: var(--ok); } #conn.s-disconnected { color: var(--bad); }
   .red { color: var(--bad) !important; }
-  .box { background: var(--panel); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
+  .box { background: var(--card); border-radius: 12px; padding: 8px 10px; margin-bottom: 8px; }
   .svc { font: 13px ui-monospace, Menlo, monospace; -webkit-user-select: text; user-select: text; }
   .svc .uuid { color: var(--info); }
   .char { margin: 6px 0 6px 10px; padding-left: 8px; border-left: 2px solid var(--line); }
@@ -146,10 +188,10 @@
   /* ---------- Rohdaten ---------- */
   #rawStats { font-size: .9rem; color: var(--dim); margin-bottom: 6px; font-variant-numeric: tabular-nums; }
   #raw { height: 55vh; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
-    background: #05080c; border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px;
+    background: var(--raw-bg); border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px;
     font: 13px/1.35 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-all; -webkit-user-select: text; user-select: text; }
   #raw .ts { color: var(--dim); } #raw .hex { color: var(--warn); } #raw .sys { color: var(--info); }
-  #raw .err { color: var(--bad); } #raw .bad { color: #ff9a9a; text-decoration: line-through; }
+  #raw .err { color: var(--bad); } #raw .bad { color: var(--raw-bad); text-decoration: line-through; }
 
   /* ---------- Aufzeichnung ---------- */
   .sess { border-top: 1px solid var(--line); padding: 10px 0; }
@@ -166,7 +208,7 @@
 <body>
 
 <header id="sbar" class="st-bad">
-  <span class="dot">●</span>
+  <span class="dot"></span>
   <span id="sbText" class="grow">nicht verbunden</span>
   <span id="sbAge"></span>
   <span id="sbRate"></span>
@@ -207,6 +249,12 @@
     <button class="secondary" id="btnDefaults">Standard wiederherstellen</button>
 
     <h2>Bildschirm</h2>
+    <label class="hint" for="setTheme">Darstellung</label>
+    <select id="setTheme">
+      <option value="auto">Automatisch (wie das iPhone)</option>
+      <option value="light">Hell</option>
+      <option value="dark">Dunkel</option>
+    </select>
     <label class="chk"><input type="checkbox" id="setWake"> Bildschirm wachhalten (Wake Lock)</label>
     <div class="hint">Status: <b id="wakeState">–</b></div>
 
@@ -1029,7 +1077,7 @@ function handleLine(line, key) {
 /* =====================================================================
    FLUG-ANZEIGE
    ===================================================================== */
-const APP_VERSION = "2026-11-23.2";
+const APP_VERSION = "2026-11-23.3";
 const STALE_MS = 2000;          // ohne neue Daten länger als das → „keine Daten“
 const HOLD_MS = 2000;           // ein Messwert gilt höchstens so lange (Lücken zählen nicht)
 const MIN_COVERAGE = 0.9;       // Fenster gilt als gefüllt ab 90 % Abdeckung
@@ -1072,22 +1120,39 @@ function ingestLine(line, tp, te) {
 
 /* ---------- Einstellungen ---------- */
 const GRIDS = { "1x1": [1, 1], "1x2": [1, 2], "1x3": [1, 3], "1x4": [1, 4], "2x2": [2, 2], "2x3": [2, 3], "2x4": [2, 4] };
+// cat = Farbe des Symbols (vert = Steigen, alt = Höhe, move = Bewegung, sonst Zeit/System); bar = Steigbalken am Rand
 const INSTRUMENTS = {
-  climb:    { name: "Steigen", long: "Aktuelles Steigen", unit: "m/s" },
-  climbAvg: { name: "Integr. Steigen", long: "Integriertes Steigen", unit: "m/s" },
-  altGps:   { name: "GPS-Höhe", long: "GPS-Höhe", unit: "m" },
-  altMax:   { name: "Max. Höhe", long: "Max. Höhe (GPS)", unit: "m" },
-  agl:      { name: "Höhe über Grund", long: "Höhe über Grund (GPS-Höhe − Gelände)", unit: "m" },
-  speed:    { name: "Geschw. über Grund", long: "Geschwindigkeit über Grund", unit: "km/h" },
-  glide:    { name: "Gleitzahl über Grund", long: "Gleitzahl über Grund", unit: "" },
-  course:   { name: "Kurs über Grund", long: "Kurs über Grund", unit: "°" },
-  gpsQual:  { name: "GPS-Qualität", long: "GPS-Qualität (Satelliten, HDOP)", unit: "Sat" },
-  clock:    { name: "Uhrzeit", long: "Uhrzeit", unit: "", cls: "long" },
-  recTime:  { name: "Aufzeichnung", long: "Zeit seit Aufzeichnungsstart", unit: "", cls: "long" },
-  conn:     { name: "Verbindung", long: "Verbindungsstatus und Datenrate", unit: "", cls: "text" },
+  climb:    { name: "Steigen", long: "Aktuelles Steigen", unit: "m/s", cat: "vert", bar: true },
+  climbAvg: { name: "Integr. Steigen", long: "Integriertes Steigen", unit: "m/s", cat: "vert", bar: true },
+  altGps:   { name: "GPS-Höhe", long: "GPS-Höhe", unit: "m", cat: "alt" },
+  altMax:   { name: "Max. Höhe", long: "Max. Höhe (GPS)", unit: "m", cat: "alt" },
+  agl:      { name: "Höhe über Grund", long: "Höhe über Grund (GPS-Höhe − Gelände)", unit: "m", cat: "alt" },
+  speed:    { name: "Geschw. über Grund", long: "Geschwindigkeit über Grund", unit: "km/h", cat: "move" },
+  glide:    { name: "Gleitzahl über Grund", long: "Gleitzahl über Grund", unit: "", cat: "move" },
+  course:   { name: "Kurs über Grund", long: "Kurs über Grund", unit: "°", cat: "move" },
+  gpsQual:  { name: "GPS-Qualität", long: "GPS-Qualität (Satelliten, HDOP)", unit: "Sat", cat: "sys" },
+  clock:    { name: "Uhrzeit", long: "Uhrzeit", unit: "", cls: "long", cat: "sys" },
+  recTime:  { name: "Aufzeichnung", long: "Zeit seit Aufzeichnungsstart", unit: "", cls: "long", cat: "sys" },
+  conn:     { name: "Verbindung", long: "Verbindungsstatus und Datenrate", unit: "", cls: "text", cat: "sys" },
 };
+// Symbole (24er-Raster, Linien in currentColor)
+const ICONS = {
+  climb:    '<path d="M12 20V5M6 11l6-6 6 6"/>',
+  climbAvg: '<path d="M3 16c2.5 0 3-5 5.5-5s3 4 5.5 4 3-7 7-7"/><path d="M17 8h4v4"/>',
+  altGps:   '<path d="M2.5 20l6.5-11 4 6.5 2.5-3.5 6 8z"/>',
+  altMax:   '<path d="M2.5 20l6.5-11 4 6.5 2.5-3.5 6 8z"/><path d="M9 9V3l4.5 1.5L9 6"/>',
+  agl:      '<path d="M2 21l6-8 4 5 3-3 7 6z"/><path d="M16 3v8M13.5 5.5L16 3l2.5 2.5"/>',
+  speed:    '<path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4.5-5.5"/><circle cx="12" cy="17" r="1.2"/>',
+  glide:    '<path d="M3.5 9.5C6 5.5 18 5.5 20.5 9.5"/><path d="M3.5 9.5L12 19l8.5-9.5M8 7.2L12 19l4-11.8"/>',
+  course:   '<path d="M12 3l6.5 17-6.5-4-6.5 4z"/>',
+  gpsQual:  '<path d="M5 20v-3M10 20v-7M15 20v-11M20 20V4"/>',
+  clock:    '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  recTime:  '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.8 2M9.5 2.5h5M12 2.5v3.5"/>',
+  conn:     '<path d="M7 7l10 10-5 4V3l5 4L7 17"/>',
+};
+const iconSvg = (id) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[id] || ""}</svg>`;
 const DEFAULT_SETTINGS = {
-  intWin: 16, glideWin: 10, glideMax: 60, wake: true, pilot: "", glider: "", terrRadius: 30,
+  intWin: 16, glideWin: 10, glideMax: 60, wake: true, pilot: "", glider: "", terrRadius: 30, theme: "auto",
   pages: {
     flug: { grid: "2x3", boxes: ["climb", "climbAvg", "altGps", "speed", "glide", "course"] },
     info: { grid: "2x3", boxes: ["agl", "gpsQual", "altMax", "recTime", "clock", "conn"] },
@@ -1119,6 +1184,7 @@ function normalizeSettings(s) {
     pilot: typeof s.pilot === "string" ? s.pilot.slice(0, 60) : "",
     glider: typeof s.glider === "string" ? s.glider.slice(0, 60) : "",
     terrRadius: clampInt(s.terrRadius, 5, 100, d.terrRadius),
+    theme: ["auto", "light", "dark"].includes(s.theme) ? s.theme : d.theme,
     pages: { flug: normalizePage(s.pages && s.pages.flug, d.pages.flug), info: normalizePage(s.pages && s.pages.info, d.pages.info) },
   };
 }
@@ -1136,14 +1202,14 @@ function computeInstrument(id, now, noData) {
     case "climb": {
       const stale = noData || !freshOf("vario", now) || cur.vario === null;
       const f = Core.fmtSigned(cur.vario, 1);
-      return { text: f ? f.text : DASH, tone: f ? (f.sign > 0 ? "pos" : f.sign < 0 ? "neg" : "") : "", sub: "LXWP0", stale };
+      return { text: f ? f.text : DASH, tone: f ? (f.sign > 0 ? "pos" : f.sign < 0 ? "neg" : "") : "", sub: "LXWP0", stale, bar: cur.vario };
     }
     case "climbAvg": {
       const r = Core.windowMean(varioBuf, now, settings.intWin * 1000, HOLD_MS, MIN_COVERAGE);
       const stale = noData || !freshOf("vario", now);
       if (!r.valid) return { text: DASH, tone: "", sub: SUB_STATE[r.state] + " (" + settings.intWin + " s)", stale };
       const f = Core.fmtSigned(r.mean, 1);
-      return { text: f.text, tone: f.sign > 0 ? "pos" : f.sign < 0 ? "neg" : "", sub: "Mittel " + settings.intWin + " s", stale };
+      return { text: f.text, tone: f.sign > 0 ? "pos" : f.sign < 0 ? "neg" : "", sub: "Mittel " + settings.intWin + " s", stale, bar: r.mean };
     }
     case "altGps": {
       const g = cur.gga, stale = noData || !freshOf("gga", now);
@@ -1183,7 +1249,7 @@ function computeInstrument(id, now, noData) {
       if (!r) return { text: DASH, sub: "keine Daten", stale: true };
       if (!r.valid || r.course === null) return { text: DASH, sub: "kein GPS-Fix", stale, tone: "bad" };
       const c = ((Math.round(r.course) % 360) + 360) % 360;
-      return { text: String(c).padStart(3, "0"), sub: Core.compass8(c), stale };
+      return { text: String(c).padStart(3, "0"), sub: Core.compass8(c), stale, rot: c };
     }
     case "gpsQual": {
       const g = cur.gga, stale = noData || !freshOf("gga", now);
@@ -1226,13 +1292,16 @@ function buildInstrumentPage(pid) {
   pageRefs[pid] = cfg.boxes.map(id => {
     const def = INSTRUMENTS[id];
     const el = document.createElement("div");
-    el.className = "ibox" + (def.cls ? " " + def.cls : "");
-    el.innerHTML = `<div class="lbl"><span class="name"></span><span class="flag">KEINE DATEN</span><span class="unit"></span></div>
-      <div class="val"><span class="num">–</span></div><div class="sub"></div>`;
+    el.className = "ibox" + (def.cls ? " " + def.cls : "") + (def.bar ? " hasbar" : "");
+    el.dataset.cat = def.cat || "";
+    el.innerHTML = `<div class="lbl"><span class="ic">${iconSvg(id)}</span><span class="name"></span><span class="unit"></span></div>
+      <span class="flag">Keine Daten</span>
+      <div class="val"><span class="num">–</span></div><div class="sub"></div>${def.bar ? '<div class="vbar"><i></i></div>' : ""}`;
     el.querySelector(".name").textContent = def.name;
     el.querySelector(".unit").textContent = def.unit;
     grid.appendChild(el);
-    return { id, el, num: el.querySelector(".num"), sub: el.querySelector(".sub"), base: el.className, last: "", lastLen: -1, lastCls: "" };
+    return { id, el, num: el.querySelector(".num"), sub: el.querySelector(".sub"), bar: el.querySelector(".vbar i"), ic: el.querySelector(".ic svg"),
+             base: el.className, last: "", lastLen: -1, lastCls: "", lastBar: "", lastRot: null };
   });
 }
 function fitText(el) {
@@ -1255,6 +1324,14 @@ function renderInstrumentPage(pid, now, noData) {
     if (r.sub.textContent !== (v.sub || "")) r.sub.textContent = v.sub || "";
     const cls = r.base + (v.tone ? " t-" + v.tone : "") + (v.stale ? " stale" : "");
     if (cls !== r.lastCls) { r.el.className = cls; r.lastCls = cls; }
+    if (r.bar) {   // Steigbalken: halbe Höhe = 5 m/s
+      const h = Number.isFinite(v.bar) ? (Math.min(1, Math.abs(v.bar) / 5) * 50).toFixed(1) + "%" : "0%";
+      if (h !== r.lastBar) { r.bar.style.height = h; r.lastBar = h; }
+    }
+    if (v.rot !== undefined && v.rot !== r.lastRot) {   // Kurs-Pfeil dreht mit, immer auf dem kürzeren Weg (359° → 1° = +2°)
+      r.rotAcc = r.lastRot === null ? v.rot : r.rotAcc + ((v.rot - r.lastRot + 540) % 360) - 180;
+      r.ic.style.transform = "rotate(" + r.rotAcc + "deg)"; r.lastRot = v.rot;
+    }
   }
 }
 function refitAll() { for (const pid in pageRefs) for (const r of pageRefs[pid]) { fitText(r.num); r.lastLen = r.num.textContent.length; } }
@@ -1329,7 +1406,7 @@ function render() {
   $("sbAge").textContent = lastMsgAt ? (age / 1000).toFixed(1) + " s" : "";
   $("sbRate").textContent = connState === "connected" ? lineRate(now).toFixed(0) + "/s" : "";
   const sbRec = $("sbRec");
-  if (rec.active) { sbRec.textContent = "● REC"; sbRec.className = ""; }
+  if (rec.active) { sbRec.textContent = Core.fmtDuration(Date.now() - rec.session.start); sbRec.className = "on"; }
   else if (rec.interrupted.length) { sbRec.textContent = "⚠ Aufz."; sbRec.className = "warn"; }
   else sbRec.textContent = "";
 
@@ -1399,6 +1476,7 @@ function buildSettingsUI() {
   $("setPilot").value = settings.pilot;
   $("setGlider").value = settings.glider;
   $("setTerrRadius").value = settings.terrRadius;
+  $("setTheme").value = settings.theme;
   $("appVer").textContent = APP_VERSION;
   for (const pid of ["flug", "info"]) {
     const host = $("cfg-" + pid);
@@ -1444,9 +1522,20 @@ $("btnDefaults").addEventListener("click", () => {
   if (!confirm("Alle Anzeige- und Berechnungs-Einstellungen auf Standard zurücksetzen?")) return;
   const keep = { pilot: settings.pilot, glider: settings.glider };
   settings = normalizeSettings(Object.assign(JSON.parse(JSON.stringify(DEFAULT_SETTINGS)), keep));
-  saveSettings(); buildSettingsUI(); buildInstrumentPage("flug"); buildInstrumentPage("info");
+  saveSettings(); buildSettingsUI(); buildInstrumentPage("flug"); buildInstrumentPage("info"); applyTheme();
 });
 $("btnResetMax").addEventListener("click", () => { maxAlt = null; });
+
+/* ---------- Darstellung hell / dunkel ---------- */
+const mqLight = window.matchMedia ? matchMedia("(prefers-color-scheme: light)") : null;
+function applyTheme() {
+  const t = settings.theme === "auto" ? (mqLight && mqLight.matches ? "light" : "dark") : settings.theme;
+  document.documentElement.setAttribute("data-theme", t);
+  document.querySelector('meta[name="theme-color"]').setAttribute("content", t === "light" ? "#e6e9ed" : "#000000");
+}
+$("setTheme").addEventListener("change", () => { settings.theme = $("setTheme").value; saveSettings(); applyTheme(); });
+if (mqLight) (mqLight.addEventListener ? mqLight.addEventListener("change", applyTheme) : mqLight.addListener(applyTheme));
+applyTheme();
 
 /* ---------- Bildschirm wachhalten ---------- */
 let wakeLock = null, wakeState = "–";

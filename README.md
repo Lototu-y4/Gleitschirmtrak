@@ -15,7 +15,7 @@ Online: <https://lototu-y4.github.io/Gleitschirmtrak/>
 - **Fluganzeige:**
   - Seiten „Flug“ und „Info“, durch seitliches Wischen oder über die Reiter unten zu wechseln.
   - „Menü“ führt zurück zur Startseite, der Flug läuft dabei weiter.
-- **Einstellungen:** Berechnungsfenster, Anordnung der Kästen, Wake Lock, Geländedaten offline speichern, Offline-Cache.
+- **Einstellungen:** Berechnungsfenster, Anordnung der Kästen, Darstellung (automatisch, hell oder dunkel), Wake Lock, Geländedaten offline speichern, Offline-Cache.
 - **Debug:**
   - Ausführlicher Verbindungsstatus, Datenquellen und Rohdaten
   - Gespeicherte Aufzeichnungen mit Export als .txt und .igc
@@ -49,7 +49,7 @@ Online: <https://lototu-y4.github.io/Gleitschirmtrak/>
   - Jeder Messwert gilt bis zum nächsten, höchstens aber 2 s.
   - Längere Lücken zählen nicht mit.
   - Ein Fenster gilt erst als gefüllt, wenn es zu mindestens 90 % abgedeckt ist.
-- Kommen mehr als 2 s keine Daten, werden die Werte abgedunkelt und mit „KEINE DATEN“ markiert.
+- Kommen mehr als 2 s keine Daten, werden die Werte abgedunkelt und mit „Keine Daten“ markiert.
 
 ## Höhe über Grund (AGL)
 
