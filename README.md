@@ -14,11 +14,11 @@ Online: <https://lototu-y4.github.io/Gleitschirmtrak/>
   - Während des Flugs stehen hier „Zur Fluganzeige“ und „Flug beenden“.
   - Ein unterbrochener Flug (z. B. nach einem Neuladen) wird hier zum Fortsetzen angeboten.
 - **Fluganzeige:**
-  - Seiten „Gleiten“, „Thermik“ und „Info“, durch seitliches Wischen oder über die Reiter unten zu wechseln.
-  - Beim Kreisen wechselt die Anzeige automatisch auf „Thermik“ und danach zurück auf „Gleiten“ (siehe „Automatischer Seitenwechsel“). Wischen geht jederzeit und gilt bis zum nächsten automatischen Wechsel.
+  - Seiten „Gleiten“, „Thermik“, „Karte“, „Luftraum“ und „Info“, durch seitliches Wischen oder über die Reiter unten zu wechseln.
+  - Beim Kreisen wechselt die Anzeige automatisch auf „Thermik“ und danach zurück auf die Seite davor, also z. B. „Gleiten“ oder „Karte“ (siehe „Automatischer Seitenwechsel“). Wischen geht jederzeit und gilt bis zum nächsten automatischen Wechsel.
   - Die Seite „Info“ zeigt oben die Flugphase („Gleiten“, „Kreisen links/rechts“ mit Anzahl Kreise) und welche Seite die Automatik gerade wählt.
   - „Menü“ führt zurück zur Startseite, der Flug läuft dabei weiter.
-- **Einstellungen:** Berechnungsfenster, Wind und Kreiserkennung, Start und Landung (je mit eigenem „Standard wiederherstellen“), Anordnung der Kästen, Darstellung (automatisch, hell oder dunkel), Wake Lock, Geländedaten offline speichern, Offline-Cache.
+- **Einstellungen:** Berechnungsfenster, Wind und Kreiserkennung, Start und Landung (je mit eigenem „Standard wiederherstellen“), Anordnung der Kästen, Karte und Ziel (Wegpunkte, Ausrichtung, Spur), Darstellung (automatisch, hell oder dunkel), Wake Lock, Gelände und Karten offline speichern, Offline-Cache.
 - **Debug:**
   - Ausführlicher Verbindungsstatus, Datenquellen und Rohdaten
   - Gespeicherte Aufzeichnungen mit Export als .txt und .igc
@@ -34,6 +34,8 @@ Online: <https://lototu-y4.github.io/Gleitschirmtrak/>
 | `kreisen.js` | Kreiserkennung (Zustandsmaschine, ohne Abhängigkeiten, auch in Node lauffähig) |
 | `wind.js` | Windschätzung aus Kreisen, Güte, Gültigkeit, Pfeilwinkel (ohne Abhängigkeiten) |
 | `startlandung.js` | Start-, Fehlstart- und Landeerkennung (Zustandsmaschine, ohne Abhängigkeiten) |
+| `karte.js` | Karte: Kachelrechnung (Web Mercator), Distanz, Peilung, Gleitzahl, LV95 ↔ WGS84, Zeichnen auf ein Canvas (ohne Abhängigkeiten) |
+| `tests/karte.test.js` | Tests der Kartenberechnungen |
 | `tests/startlandung.test.js` | Tests der Start- und Landeerkennung mit erfundenen Flügen, Autofahrt, Fehlstart, Datenlücke |
 | `tests/core.test.js` | Tests für Parser, Prüfsumme, Berechnungen, IGC-Export und Geländeabfrage |
 | `tests/kreisen.test.js`, `tests/phasenwahl.test.js`, `tests/wind.test.js`, `tests/sim.js` | Tests der Kreiserkennung, des Seitenwechsels und der Windschätzung mit simulierten Flügen |
@@ -93,7 +95,8 @@ Die Phasenwahl entscheidet aus den Ereignissen der Kreiserkennung zwischen „th
 - **Gleiten → Thermik:** sobald „Kreisen beginnt“ (250° in eine Richtung, siehe oben). Ausnahmen:
   - Die Drehung entstand aus einem Richtungswechsel, oder in den letzten 120 s gab es ein Achter-Muster. Dann erst beim ersten vollen Kreis (360°).
   - Einstellung „erst nach dem ersten vollen Kreis“: immer erst bei 360°.
-- **Thermik → Gleiten:** sobald das Kreisen endet. Die Kreiserkennung hat da schon 8 s Geradeausflug abgewartet.
+- **Thermik → zurück:** sobald das Kreisen endet. Die Kreiserkennung hat da schon 8 s Geradeausflug abgewartet.
+  Zurück geht es auf die Seite, die vor dem Wechsel auf „Thermik“ offen war (z. B. „Karte“), sonst auf „Gleiten“.
 - **Wechsel der Drehrichtung im Bart:**
   - Die Thermik bleibt bis zu 30 s erhalten, bis in der neuen Richtung ein voller Kreis gelingt.
   - Kommt stattdessen ein weiterer Richtungswechsel oder läuft die Zeit ab, war es ein Achter (Soaring): zurück auf Gleiten und 120 s Achter-Sperre.
@@ -197,6 +200,41 @@ node werkzeuge/auswertung.js flugdaten/igc flugdaten/auswertung
   - Hängt der Schirm bei starkem Wind fast still in der Luft, gibt es keine Landung, solange die AGL über 40 m liegt oder die Höhe sich ändert.
   - Die Landung braucht 30 s Daten am Boden. Wird das Vario gleich nach dem Aufsetzen ausgeschaltet oder bricht Bluetooth ab, bleibt der Flug offen. Neue Daten, etwa nach der Heimfahrt, kämen dann noch in diesen Flug. In diesem Fall „Flug beenden“ tippen.
 
+## Karte (`karte.js`)
+
+**Nur eine Orientierungshilfe, kein Navigationsgerät.** Die Segelflugkarte ist nur ein Bild: Die App kennt keine Luftraumgrenzen und warnt nicht. Massgebend sind die gültige Karte und die DABS.
+
+- **Seite „Karte“:** grosse Karte (Landeskarte swisstopo), darunter GPS-Höhe, Steigen, integriertes Steigen und Höhe über Grund.
+- **Seite „Luftraum“:** grosse Karte (Segelflugkarte BAZL), darunter GPS-Höhe und Uhrzeit.
+- **Auf der Karte:**
+  - eigene Position als gelber Pfeil in Flugrichtung, unter 5 km/h als Punkt
+  - geflogene Spur des aufgezeichneten Flugs (abschaltbar)
+  - Thermiken dieses Flugs (nur Landeskarte): Mittelpunkt der Positionen beim Kreisen und grösster Höhengewinn, ab +30 m. Die laufende Thermik ist immer zu sehen.
+  - Ziel mit gestrichelter Linie und oben einer Leiste mit Distanz, nötiger Gleitzahl und Name
+  - Massstab, Nordpfeil (bei „Kurs oben“) und Quelle
+- **Ausrichtung:** „Kurs oben“ (Standard) oder „Nord oben“. Bei „Kurs oben“ dreht die Karte nur im Geradeausflug ab 8 km/h. Beim Kreisen bleibt sie stehen, nur der Pfeil dreht.
+- **Bedienung:** Die Karte folgt immer der eigenen Position und lässt sich nicht verschieben, damit Wischen weiter die Seite wechselt.
+  - Zoom mit den Knöpfen + und −. Landeskarte Zoom 8–15 (Standard 12, etwa 10 km Bildbreite), Segelflugkarte 8–13 (Standard 11). Über Zoom 12 wird die Segelflugkarte nur vergrössert und unscharf.
+  - **Lang drücken** (0,7 s) setzt dort das Ziel. Oben erscheint 8 s lang „Rückgängig“.
+- **Ziel und Wegpunkte:** *Einstellungen → Karte und Ziel*. Wegpunkte mit Name und Koordinaten speichern, „Aktuelle Position“ übernimmt die Position vom Vario (sonst vom Handy). Koordinaten als WGS84 (`46.68, 7.86`), LV95 (`2'630'000 / 1'170'000`) oder LV03 (`630000 170000`).
+- **Nötige Gleitzahl:** Distanz geteilt durch (GPS-Höhe − Geländehöhe am Ziel). Ohne Wind und ohne Sicherheitsreserve. Unter der Zielhöhe steht „unter Ziel“. Auch als Kasten „Ziel“ für jede Seite wählbar.
+- **Gebiet:** Schweiz mit etwa 10 km Rand (45.72–47.90° N, 5.85–10.60° E). Ausserhalb lädt die Karte nichts und zeigt „ausserhalb der Schweiz“.
+- **Kartenbilder:** `wmts.geo.admin.ch` (Web Mercator, 256-px-Kacheln). Laden zuerst aus dem Speicher, dann aus der IndexedDB (`flugapp-karte`), dann aus dem Netz. Bilder aus dem Netz werden gespeichert.
+- **Offline:** *Gebiet offline speichern* lädt nach dem Gelände auch die Karten im selben Radius: Landeskarte ab Zoom 8 bis zur gewählten Stufe, Segelflugkarte Zoom 8–12. Bei 30 km Radius etwa:
+
+  | | bis Zoom | Grösse |
+  |---|---|---|
+  | Landeskarte | 13 / 14 / 15 | ca. 15 / 55 / 210 MB |
+  | Segelflugkarte | 12 | ca. 20 MB |
+
+  Über 80 MB neue Daten fragt die App vorher nach. Gebiete über 250 MB lehnt sie ab („Radius oder Zoom verkleinern“), z. B. 60 km bis Zoom 14.
+  iOS kann gespeicherte Daten löschen, wenn wenig Speicher frei ist. Vor dem Flug unter *Einstellungen* nachsehen, ob die Bilder noch da sind.
+- **Dunkelmodus:** Die Karte wird leicht abgedunkelt.
+- **Quellen:** Landeskarte © swisstopo, Segelflugkarte © BAZL (Open Government Data, Quellenangabe auf der Karte). Grosse Downloads sollen laut den Nutzungsbedingungen der Bundes-Geodateninfrastruktur vorher mit info@geo.admin.ch abgesprochen werden. Darum gibt es nur „Gebiet speichern“ und nicht die ganze Schweiz.
+- **Bekannte Grenzen:**
+  - Spur und Thermiken gibt es nur während einer Aufzeichnung. Nach einem Neuladen beginnt die Spur neu.
+  - Die Position kommt vom Vario-GPS. Ohne Daten wird der Kasten abgedunkelt („Keine Daten“).
+
 ## Höhe über Grund (AGL)
 
 - **Berechnung:** GPS-Höhe über Meer (GGA Feld 9) minus Geländehöhe an der aktuellen Position.
@@ -207,7 +245,7 @@ node werkzeuge/auswertung.js flugdaten/igc flugdaten/auswertung
 - **Kachel laden:** zuerst aus dem Speicher, dann aus der IndexedDB (`flugapp-terrain`), dann aus dem Netz.
   - Kacheln aus dem Netz werden in der IndexedDB gespeichert.
   - Die 8 Nachbarkacheln der aktuellen Position werden im Hintergrund mitgeladen.
-- **Ohne Netz** geht es nur mit vorher gespeicherten Kacheln: *Einstellungen → Gelände → Gebiet offline speichern* (Radius um die aktuelle Position oder um eingegebene Koordinaten; 30 km ≈ 12 MB).
+- **Ohne Netz** geht es nur mit vorher gespeicherten Kacheln: *Einstellungen → Gelände und Karten offline → Gebiet offline speichern* (Radius um die aktuelle Position oder um eingegebene Koordinaten; 30 km ≈ 12 MB).
 - Der Service Worker und „Neueste Version laden“ lassen die Geländedaten in Ruhe.
 - Ausserhalb der Kacheln (z. B. Gardasee) zeigt der Kasten „ausserhalb der Geländedaten“.
 - **Nur eine Näherung:** Das Modell enthält keine Bäume, Gebäude, Leitungen oder Seilbahnen, und die GPS-Höhe schwankt um mehrere Meter.

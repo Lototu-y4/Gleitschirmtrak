@@ -1,8 +1,8 @@
 /* Service Worker der Flug-Anzeige.
    Strategie „Netz zuerst, Cache als Rückfall“: Mit Netz kommt immer die neueste Version,
    ohne Netz (oder nach 4 s ohne Antwort) die zuletzt gespeicherte. Lädt die Seite nie selbst neu. */
-const CACHE = "flugapp-v4";
-const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./kreisen.js", "./wind.js", "./startlandung.js"];
+const CACHE = "flugapp-v5";
+const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./kreisen.js", "./wind.js", "./startlandung.js", "./karte.js"];
 const TIMEOUT_MS = 4000;
 
 self.addEventListener("install", (event) => {

@@ -96,6 +96,7 @@
     font-size: 17px; font-weight: 750; line-height: 1.1; border: 0; width: auto; }
   .tabbar button.on { color: var(--accent-text); background: var(--accent); }
   .tabbar button.menu { flex: 0.8; color: var(--text); }
+  #ftabs button { font-size: 15px; letter-spacing: -0.02em; }
   #ftabs { display: none; }
   body.flying #tabs { display: none; }
   body.flying #ftabs { display: flex; }
@@ -164,6 +165,24 @@
   .ibox.wexp .num, .ibox.wexp .nu .u, .ibox.wexp .wpf svg { opacity: .3; }
   .ibox.wexp .sub { color: var(--warn); }
   .ibox.wleer .nu .u { visibility: hidden; }
+
+  /* ---------- Karte (grosser Kasten) ---------- */
+  .ibox.karte { padding: 0; background: var(--line); }
+  .ibox.karte canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: pan-x; }
+  .ibox.karte .kz { position: absolute; right: 8px; bottom: 22px; display: flex; flex-direction: column; gap: 8px; z-index: 3; }
+  .ibox.karte .kz button { width: 54px; height: 54px; min-height: 0; margin: 0; padding: 0; border-radius: 12px; font-size: 32px; font-weight: 800;
+    line-height: 1; background: rgba(255,255,255,.92); color: #000; border: 1.5px solid rgba(0,0,0,.35); }
+  .ibox.karte .kz button:disabled { opacity: .35; }
+  .ibox.karte .kziel { position: absolute; left: 6px; right: 56px; top: 6px; z-index: 3; display: none; align-items: center; gap: 8px;
+    background: rgba(255,255,255,.92); color: #000; border-radius: 10px; padding: 5px 10px; font-size: 18px; font-weight: 800;
+    white-space: nowrap; overflow: hidden; font-variant-numeric: tabular-nums; }
+  .ibox.karte .kziel.an { display: flex; }
+  .ibox.karte .kziel .zn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 650; font-size: 15px; color: #333; }
+  .ibox.karte .kziel button { width: auto; min-height: 0; margin: 0; padding: 6px 12px; font-size: 15px; border-radius: 8px; background: #000; color: #fff; }
+  .ibox.karte .kmsg { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; display: none;
+    background: var(--flag-bg); color: #000; font-size: 15px; font-weight: 800; padding: 4px 12px; border-radius: 999px; white-space: nowrap; }
+  .ibox.karte .kmsg.an { display: block; }
+  .ibox.karte.stale { border-color: var(--warn); }
 
   /* ---------- Info-Seite: Flugphase als schmale Zeile über den Kästen ---------- */
   #page-info { display: flex; flex-direction: column; gap: 4px; }
@@ -296,9 +315,28 @@
     <div id="cfg-gleiten"></div>
     <h2>Seite „Thermik“</h2>
     <div id="cfg-thermik"></div>
+    <h2>Seite „Karte“</h2>
+    <div id="cfg-karte"></div>
+    <h2>Seite „Luftraum“</h2>
+    <div id="cfg-luftraum"></div>
     <h2>Seite „Info“</h2>
     <div id="cfg-info"></div>
     <button class="secondary" id="btnDefaults">Standard wiederherstellen</button>
+
+    <h2>Karte und Ziel</h2>
+    <div class="card"><div class="kv"><span>Ziel</span><b id="kZiel">–</b></div></div>
+    <button class="secondary" id="btnZielWeg">Ziel löschen</button>
+    <div id="kWpListe" class="card" style="margin-top:10px"></div>
+    <div class="field"><span>Name</span><input id="kWpName" style="width:60%" autocomplete="off" placeholder="Landeplatz"></div>
+    <div class="field"><span>Koordinaten</span><input id="kWpKoord" style="width:60%" autocomplete="off" placeholder="46.68, 7.86 · 2'630'000 / 1'170'000"></div>
+    <div class="row">
+      <button class="secondary" id="btnWpAdd">Wegpunkt speichern</button>
+      <button class="secondary" id="btnWpHier">Aktuelle Position</button>
+    </div>
+    <div class="hint" id="kWpMsg" style="margin-top:6px"></div>
+    <label class="hint" for="kAusrichtung">Ausrichtung</label>
+    <select id="kAusrichtung"><option value="kurs">Kurs oben</option><option value="nord">Nord oben</option></select>
+    <label class="chk"><input type="checkbox" id="kSpur"> Geflogene Spur zeigen</label>
 
     <h2>Bildschirm</h2>
     <label class="hint" for="setTheme">Darstellung</label>
@@ -313,11 +351,13 @@
     <h2>Sitzung</h2>
     <button class="secondary" id="btnResetMax">Max. Höhe zurücksetzen</button>
 
-    <h2>Gelände (Höhe über Grund)</h2>
+    <h2>Gelände und Karten offline</h2>
     <div class="card"><div class="kv">
       <span>Geländedaten</span><b id="terrState">–</b>
       <span>Offline gespeichert</span><b id="terrStored">–</b>
       <span>Download</span><b id="terrJob">–</b>
+      <span>Karten offline</span><b id="kStored">–</b>
+      <span>Karten-Download</span><b id="kJob">–</b>
     </div></div>
     <div class="field"><span>Radius um den Mittelpunkt (5–100 km)</span><input id="setTerrRadius" type="number" inputmode="numeric" min="5" max="100" step="1"></div>
     <div class="field"><span>Mittelpunkt (Breite, Länge; leer = aktuelle Position)</span><input id="terrCenter" style="width:45%" placeholder="46.68, 7.86" autocomplete="off" inputmode="decimal"></div>
@@ -325,7 +365,15 @@
       <button class="secondary" id="btnTerrLoad">Gebiet offline speichern</button>
       <button class="secondary" id="btnTerrStop" disabled>Abbrechen</button>
     </div>
+    <label class="hint" for="kOfflineZoom">Landeskarte offline speichern bis</label>
+    <select id="kOfflineZoom">
+      <option value="12">Zoom 12 (1:150 000)</option>
+      <option value="13">Zoom 13 (1:75 000)</option>
+      <option value="14">Zoom 14 (1:35 000)</option>
+      <option value="15">Zoom 15 (1:18 000, sehr gross)</option>
+    </select>
     <button class="danger" id="btnTerrClear">Offline-Geländedaten löschen</button>
+    <button class="danger" id="btnKarteClear">Offline-Karten löschen</button>
     <div class="hint" style="margin-top:6px">Quelle Geländedaten: Bundesamt für Landestopografie swisstopo (swissALTIRegio)</div>
 
     <h2>Offline</h2>
@@ -410,6 +458,8 @@
     <div class="swiper" id="swiper">
       <section class="fpage" id="page-gleiten"><div class="igrid"></div></section>
       <section class="fpage" id="page-thermik"><div class="igrid"></div></section>
+      <section class="fpage" id="page-karte"><div class="igrid"></div></section>
+      <section class="fpage" id="page-luftraum"><div class="igrid"></div></section>
       <section class="fpage" id="page-info"><div class="phasebar" id="phaseBar"><span class="pdot"></span><span id="phaseMain">Gleiten</span><span class="psub" id="phaseSub"></span></div><div class="igrid"></div></section>
     </div>
   </section>
@@ -423,7 +473,9 @@
 <nav id="ftabs" class="tabbar">
   <button data-fp="0">Gleiten</button>
   <button data-fp="1">Thermik</button>
-  <button data-fp="2">Info</button>
+  <button data-fp="2">Karte</button>
+  <button data-fp="3">Luftraum</button>
+  <button data-fp="4">Info</button>
   <button id="btnMenu" class="menu">Menü</button>
 </nav>
 
@@ -798,6 +850,7 @@ const Core = (() => {
 <script src="./kreisen.js"></script>
 <script src="./wind.js"></script>
 <script src="./startlandung.js"></script>
+<script src="./karte.js"></script>
 
 <script>
 "use strict";
@@ -1219,7 +1272,7 @@ function handleLine(line, key) {
 /* =====================================================================
    FLUG-ANZEIGE
    ===================================================================== */
-const APP_VERSION = "2026-11-24.3";
+const APP_VERSION = "2026-11-24.4";
 const STALE_MS = 2000;          // ohne neue Daten länger als das → „keine Daten“
 const HOLD_MS = 2000;           // ein Messwert gilt höchstens so lange (Lücken zählen nicht)
 const MIN_COVERAGE = 0.9;       // Fenster gilt als gefüllt ab 90 % Abdeckung
@@ -1256,6 +1309,7 @@ function ingestLine(line, tp, te) {
   } else if (p.type === "gga") {
     cur.gga = d; tLast.gga = tp;
     if (Core.ggaHasFix(d) && d.alt !== null) maxAlt = Core.nextMax(maxAlt, d.alt);
+    if (Core.ggaHasFix(d)) kartenFuettern(tp, d);
     if ((rec.active || startErkennung) && d.time) {
       const fix = { utc: d.time.hhmmss, date: lastRmcDate, lat: d.lat, lon: d.lon, q: d.quality,
         alt: d.alt, sep: d.geoidSep, sats: d.sats, pAlt: tp - tLast.baro <= STALE_MS ? cur.baroAlt : null };
@@ -1266,18 +1320,19 @@ function ingestLine(line, tp, te) {
 }
 
 /* ---------- Einstellungen ---------- */
-// [Spalten, Zeilen, Anzahl der ersten Kästen über die ganze Breite]
+// [Spalten, Zeilen, Anzahl der ersten Kästen über die ganze Breite, Zeilen pro breitem Kasten (Standard 1)]
 const GRIDS = { "1x1": [1, 1, 0], "1x2": [1, 2, 0], "1x3": [1, 3, 0], "1x4": [1, 4, 0], "2x2": [2, 2, 0], "2x3": [2, 3, 0], "2x4": [2, 4, 0],
-                "2x4b": [2, 4, 1] };
-const gridCount = (g) => { const [c, r, b] = GRIDS[g]; return c * r - b * (c - 1); };
+                "2x4b": [2, 4, 1], "k2x2": [2, 5, 1, 3], "k2x1": [2, 4, 1, 3] };
+const gridHoch = (g) => GRIDS[g][3] || 1;
+const gridCount = (g) => { const [c, r, b] = GRIDS[g]; return b + (r - b * gridHoch(g)) * c; };
 // Position eines Kastens (für die Beschriftung in den Einstellungen)
 function boxPos(g, i) {
-  const [c, , b] = GRIDS[g];
-  if (i < b) return { zeile: i + 1, spalte: null };
+  const [c, , b] = GRIDS[g], h = gridHoch(g);
+  if (i < b) return { zeile: i * h + 1, spalte: null, hoch: h };
   const j = i - b;
-  return { zeile: b + Math.floor(j / c) + 1, spalte: j % c + 1 };
+  return { zeile: b * h + Math.floor(j / c) + 1, spalte: j % c + 1 };
 }
-const PAGE_IDS = ["gleiten", "thermik", "info"];   // Reihenfolge der Seiten im Flugmodus
+const PAGE_IDS = ["gleiten", "thermik", "karte", "luftraum", "info"];   // Reihenfolge der Seiten im Flugmodus
 // cat = Farbe des Symbols (vert = Steigen, alt = Höhe, move = Bewegung, sonst Zeit/System); bar = Steigbalken am Rand
 const INSTRUMENTS = {
   climb:    { name: "Steigen", long: "Aktuelles Steigen", unit: "m/s", cat: "vert", bar: true },
@@ -1295,6 +1350,10 @@ const INSTRUMENTS = {
   wind:     { name: "Wind", long: "Wind (geschätzt beim Kreisen)", unit: "", cls: "wind", cat: "move" },   // am Ende: ändert keine bestehende Anordnung
   thermGain:{ name: "Höhengewinn Thermik", long: "Höhengewinn in dieser Thermik", unit: "m", cat: "vert" },
   speedAvg: { name: "Ø Geschw. über Grund", long: "Durchschnittliche Geschwindigkeit über Grund", unit: "km/h", cat: "move" },
+  // Karten: gehören in einen grossen Kasten (Raster „Karte …“), werden nie automatisch eingefüllt
+  karte:    { name: "Karte", long: "Karte (Landeskarte, Spur, Thermiken, Ziel)", unit: "", cat: "move", karte: "topo" },
+  luftraum: { name: "Luftraum", long: "Luftraum (Segelflugkarte BAZL)", unit: "", cat: "move", karte: "luft" },
+  ziel:     { name: "Ziel", long: "Ziel: Distanz, Peilung, nötige Gleitzahl", unit: "km", cat: "move" },
 };
 // Symbole (24er-Raster, Linien in currentColor)
 const ICONS = {
@@ -1313,6 +1372,9 @@ const ICONS = {
   wind:     '<path d="M3 8h11a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h7"/>',
   thermGain:'<path d="M12 21c-4 0-6-2-6-4.5S9 12 12 12s6-2 6-4.5S16 3 12 3"/><path d="M9 6l3-3 3 3"/>',
   speedAvg: '<path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4.5-5.5"/><path d="M3 21h18"/>',
+  karte:    '<path d="M3 6l6-2.5 6 2.5 6-2.5v14.5l-6 2.5-6-2.5-6 2.5z"/><path d="M9 3.5v14.5M15 6v14.5"/>',
+  luftraum: '<path d="M3 6l6-2.5 6 2.5 6-2.5v14.5l-6 2.5-6-2.5-6 2.5z"/><circle cx="12" cy="12" r="4"/>',
+  ziel:     '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/>',
 };
 const iconSvg = (id) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[id] || ""}</svg>`;
 const DEFAULT_SETTINGS = {
@@ -1320,12 +1382,14 @@ const DEFAULT_SETTINGS = {
   pages: {
     gleiten: { grid: "2x3", boxes: ["climb", "climbAvg", "agl", "glide", "speedAvg", "recTime"] },
     thermik: { grid: "2x4b", boxes: ["climb", "climbAvg", "altGps", "agl", "thermGain", "wind", "recTime"] },
+    karte: { grid: "k2x2", boxes: ["karte", "altGps", "climb", "climbAvg", "agl"] },
+    luftraum: { grid: "k2x1", boxes: ["luftraum", "altGps", "clock"] },
     info: { grid: "2x3", boxes: ["agl", "gpsQual", "altMax", "recTime", "clock", "conn"] },
   },
 };
 const SET_KEY = "flugapp.settings.v1";
 const clampInt = (v, lo, hi, def) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : def; };
-const FILL_ORDER = Object.keys(INSTRUMENTS);
+const FILL_ORDER = Object.keys(INSTRUMENTS).filter(k => !INSTRUMENTS[k].karte);
 
 function normalizePage(p, def) {
   const grid = p && GRIDS[p.grid] ? p.grid : def.grid;
@@ -1833,6 +1897,8 @@ function computeInstrument(id, now, noData) {
     }
     case "wind":
       return computeWind(now, noData);
+    case "ziel":
+      return computeZiel(now, noData);
   }
   return { text: "?", sub: "", stale: false };
 }
@@ -1845,16 +1911,23 @@ function lineRate(now) {
 const pageRefs = Object.fromEntries(PAGE_IDS.map(pid => [pid, []]));
 function buildInstrumentPage(pid) {
   const cfg = settings.pages[pid];
-  const [cols, rows, breit] = GRIDS[cfg.grid];
+  const [cols, rows, breit] = GRIDS[cfg.grid], hoch = gridHoch(cfg.grid);
   const grid = document.querySelector("#page-" + pid + " .igrid");
   grid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
   grid.style.gridTemplateRows = `repeat(${rows}, minmax(0, 1fr))`;
   grid.innerHTML = "";
+  for (const r of pageRefs[pid]) if (r.karte) karteAbbauen(r);
   pageRefs[pid] = cfg.boxes.map((id, i) => {
     const def = INSTRUMENTS[id];
+    if (def.karte) {   // Karte: eigener Aufbau (Canvas, Zoomknöpfe, Zielleiste)
+      const r = karteKasten(pid, id, def.karte);
+      if (i < breit) { r.el.style.gridColumn = "1 / -1"; r.el.style.gridRow = "span " + hoch; }
+      grid.appendChild(r.el);
+      return r;
+    }
     const el = document.createElement("div");
     el.className = "ibox" + (def.cls ? " " + def.cls : "") + (def.bar ? " hasbar" : "");
-    if (i < breit) el.style.gridColumn = "1 / -1";   // breiter Kasten über alle Spalten
+    if (i < breit) { el.style.gridColumn = "1 / -1"; if (hoch > 1) el.style.gridRow = "span " + hoch; }   // breiter Kasten über alle Spalten
     el.dataset.cat = def.cat || "";
     // Wind: Einheit klein hinter der Zahl, daneben der Pfeil (oben im Bild = Bezugsrichtung, siehe Beschriftung darunter)
     const windTeil = id === "wind" ? `<span class="wpf aus"><svg viewBox="-50 -50 100 100" aria-hidden="true">
@@ -1885,6 +1958,7 @@ function fitText(el) {
 }
 function renderInstrumentPage(pid, now, noData) {
   for (const r of pageRefs[pid]) {
+    if (r.karte) { renderKarte(r, now, noData); continue; }
     const v = computeInstrument(r.id, now, noData);
     if (v.text !== r.last) {
       r.num.textContent = v.text;
@@ -1915,7 +1989,7 @@ function renderInstrumentPage(pid, now, noData) {
     }
   }
 }
-function refitAll() { for (const pid in pageRefs) for (const r of pageRefs[pid]) { fitText(r.num); r.lastLen = r.num.textContent.length; } }
+function refitAll() { for (const pid in pageRefs) for (const r of pageRefs[pid]) { if (r.karte) continue; fitText(r.num); r.lastLen = r.num.textContent.length; } }
 window.addEventListener("resize", () => setTimeout(refitAll, 50));
 
 /* ---------- Seiten und Flugmodus ---------- */
@@ -1931,6 +2005,7 @@ function showTab(t) {
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
   if (t === "fly") requestAnimationFrame(() => { const sw = $("swiper"); sw.scrollLeft = flyIndex * sw.clientWidth; markFlyTab(); refitAll(); });
   if (t === "debug") { refreshSessions(); rawEl.scrollTop = rawEl.scrollHeight; }
+  if (t === "einst") buildKarteSettingsUI();
   render();
 }
 function markFlyTab() { document.querySelectorAll("#ftabs button[data-fp]").forEach(b => b.classList.toggle("on", +b.dataset.fp === flyIndex)); }
@@ -1950,14 +2025,19 @@ document.querySelectorAll("#ftabs button[data-fp]").forEach(b => b.addEventListe
 $("btnMenu").addEventListener("click", () => showTab("start"));
 
 /* Automatischer Seitenwechsel Gleiten ↔ Thermik: nur beim Wechsel der Phase (Wischen bleibt bis zum nächsten Wechsel gültig).
+   Nach der Thermik zurück auf die Seite vor dem Kreisen (z. B. „Karte“), sonst auf „Gleiten“.
    Hängt an der globalen FlugPhase, wie ein späterer Abonnent es auch täte. */
 (() => {
   let letzterModus = FlugPhase.wert.modus;
+  const THERMIK = PAGE_IDS.indexOf("thermik");
+  let vorseite = null;   // Seite beim Wechsel auf Thermik
   FlugPhase.abonnieren((p) => {
     if (p.modus === letzterModus) return;
     letzterModus = p.modus;
     if (!windSet.seite || !windSet.seite.autoWechsel) return;
-    const ziel = PAGE_IDS.indexOf(p.modus === "thermik" ? "thermik" : "gleiten");
+    let ziel;
+    if (p.modus === "thermik") { vorseite = flyIndex !== THERMIK ? flyIndex : null; ziel = THERMIK; }
+    else { ziel = vorseite !== null ? vorseite : PAGE_IDS.indexOf("gleiten"); vorseite = null; }
     if (activeTab === "fly") { if (flyIndex !== ziel) goFlyPage(ziel); }
     else flyIndex = ziel;   // beim Zurückkehren zur Fluganzeige auf der passenden Seite
   });
@@ -2027,7 +2107,7 @@ function render() {
     renderDebugSources(now);
     $("dbgWake").textContent = wakeState; $("dbgSw").textContent = swState; $("dbgVer").textContent = APP_VERSION;
   }
-  if (activeTab === "einst") { $("wakeState").textContent = wakeState; $("swState").textContent = swState; renderTerrainSettings(); }
+  if (activeTab === "einst") { $("wakeState").textContent = wakeState; $("swState").textContent = swState; renderTerrainSettings(); renderKarteSettings(); }
   // Gelände um die aktuelle Position bereithalten, auch wenn der Kasten gerade nicht sichtbar ist
   if (cur.gga && Core.ggaHasFix(cur.gga) && now - tLast.gga <= STALE_MS) terrainAt(cur.gga.lat, cur.gga.lon);
 }
@@ -2104,6 +2184,7 @@ function renderDebugSources(now) {
     ["GGA · GPS", g ? "Fix " + v(g.quality) + " · " + v(g.sats) + " Sat · HDOP " + v(g.hdop) + " · " + v(g.alt, " m") : "–", age("gga")],
     ["RMC · GPS", r ? (r.valid ? "A (gültig)" : "V (ungültig)") + " · " + v(r.speedKn, " kn") + " · " + v(r.course, "°") : "–", age("rmc")],
     ["Gelände", terrainDebugText(), ""],
+    ["Karte", karteDebugText(), ""],
     ["Puffer", "Vario " + varioBuf.length + " · Geschw. " + speedBuf.length, ""],
     ["Kreiserkennung", kwDebugKreis(), ""],
     ["Windschätzung", kwDebugWind(), ""],
@@ -2133,14 +2214,15 @@ function buildSettingsUI() {
     const host = $("cfg-" + pid);
     const cfg = settings.pages[pid];
     const gridOpts = Object.keys(GRIDS).map(g => {
-      const [c, r, b] = GRIDS[g];
-      const txt = b ? `${c} × ${r}, oberster Kasten breit (${gridCount(g)} Kästen)` : `${c} × ${r} (${c} Spalte${c > 1 ? "n" : ""}, ${r} Zeile${r > 1 ? "n" : ""})`;
+      const [c, r, b] = GRIDS[g], h = gridHoch(g);
+      const txt = h > 1 ? `grosser Kasten oben (für die Karte) + ${c} × ${r - b * h} Kästen`
+        : b ? `${c} × ${r}, oberster Kasten breit (${gridCount(g)} Kästen)` : `${c} × ${r} (${c} Spalte${c > 1 ? "n" : ""}, ${r} Zeile${r > 1 ? "n" : ""})`;
       return `<option value="${g}"${g === cfg.grid ? " selected" : ""}>${txt}</option>`;
     }).join("");
     const instOpts = (sel) => Object.keys(INSTRUMENTS).map(k => `<option value="${k}"${k === sel ? " selected" : ""}>${esc(INSTRUMENTS[k].long)}</option>`).join("");
     const [cols] = GRIDS[cfg.grid];
     host.innerHTML = `<label class="hint">Raster (Spalten × Zeilen)</label><select data-grid="${pid}">${gridOpts}</select>
-      <div class="boxsel">${cfg.boxes.map((id, i) => { const ps = boxPos(cfg.grid, i); return `<div><label>Kasten ${i + 1} (Zeile ${ps.zeile}${ps.spalte ? ", Spalte " + ps.spalte : ", ganze Breite"})</label>
+      <div class="boxsel">${cfg.boxes.map((id, i) => { const ps = boxPos(cfg.grid, i); return `<div><label>Kasten ${i + 1} (${ps.hoch > 1 ? "gross, oben" : "Zeile " + ps.zeile + (ps.spalte ? ", Spalte " + ps.spalte : ", ganze Breite")})</label>
       <select data-box="${pid}" data-i="${i}">${instOpts(id)}</select></div>`; }).join("")}</div>`;
   }
 }
@@ -2618,7 +2700,7 @@ function terrainPrefetchNeighbours(key) {
 }
 
 // Geländehöhe an (lat, lon): {h (m) oder null, msg}. Synchron; fehlende Kachel wird im Hintergrund geladen.
-function terrainAt(lat, lon) {
+function terrainAt(lat, lon, ohneNachbarn) {
   if (terr.state === "nodecomp") return { h: null, msg: "Browser kann Kacheln nicht entpacken" };
   if (terr.state !== "ok") {
     if (terr.state === "noindex" && performance.now() - terr.initAt > TERRAIN_RETRY_MS) terrainInit();
@@ -2627,7 +2709,7 @@ function terrainAt(lat, lon) {
   const loc = Core.terrainLocate(terr.grid, lat, lon);
   if (!loc) return { h: null, msg: "Position ungültig" };
   if (!(loc.key in terr.index.kacheln)) return { h: null, msg: "ausserhalb der Geländedaten" };
-  if (loc.key !== terr.lastKey) { terr.lastKey = loc.key; terrainPrefetchNeighbours(loc.key); }
+  if (!ohneNachbarn && loc.key !== terr.lastKey) { terr.lastKey = loc.key; terrainPrefetchNeighbours(loc.key); }
   const tile = terr.mem.get(loc.key);
   if (!tile) {
     const f = terr.failed.get(loc.key);
@@ -2635,7 +2717,7 @@ function terrainAt(lat, lon) {
     return { h: null, msg: f ? "Gelände fehlt (offline?)" : "Gelände lädt …" };
   }
   const h = Core.terrainSample(terr.grid, tile, loc);
-  terr.lastH = h;
+  if (!ohneNachbarn) terr.lastH = h;
   return h === null ? { h: null, msg: "keine Geländehöhe hier" } : { h, msg: "" };
 }
 
@@ -2653,26 +2735,40 @@ function phonePosition() {
       e => reject(new Error(e.message || "Standort nicht verfügbar")), { enableHighAccuracy: true, timeout: 20000, maximumAge: 120000 });
   });
 }
-async function terrainDownloadArea() {
+/* Mittelpunkt für „Gebiet offline speichern“: eingegeben (WGS84 oder LV95), sonst Vario-GPS, sonst Handy-Standort */
+async function gebietMittelpunkt() {
+  const txt = $("terrCenter").value.trim();
+  if (txt) {
+    const k = KARTE_OK ? Karte.leseKoordinaten(txt) : parseCenter(txt);
+    if (!k) { terr.jobMsg = "Mittelpunkt nicht lesbar – Beispiel: 46.68, 7.86"; return null; }
+    return { c: { lat: k.lat, lon: k.lon }, src: "eingegeben" };
+  }
+  if (cur.gga && Core.ggaHasFix(cur.gga) && performance.now() - tLast.gga <= STALE_MS) return { c: { lat: cur.gga.lat, lon: cur.gga.lon }, src: "Vario-GPS" };
+  terr.jobMsg = "Standort wird ermittelt …";
+  try { return { c: await phonePosition(), src: "Handy-Standort" }; }
+  catch (e) { terr.jobMsg = "Keine Position: " + errText(e) + " – Mittelpunkt eingeben"; return null; }
+}
+let gebietLaeuft = false, gebietStop = false;
+async function gebietSpeichern() {
+  if (gebietLaeuft) return;
+  gebietLaeuft = true; gebietStop = false; $("btnTerrStop").disabled = false;
+  try {
+    const m = await gebietMittelpunkt();
+    if (!m) return;
+    try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) {}
+    try { await terrainDownloadArea(m.c, m.src); } catch (e) { terr.job = null; terr.jobMsg = "Fehler: " + errText(e); }
+    if (!gebietStop) await kartenDownload(m.c, m.src);
+  } finally { gebietLaeuft = false; $("btnTerrStop").disabled = true; }
+}
+async function terrainDownloadArea(c, src) {
   if (terr.job) return;
   if (terr.state !== "ok") await terrainInit();
   if (terr.state !== "ok") { terr.jobMsg = "Geländedaten nicht erreichbar (Netz?)"; return; }
-  const txt = $("terrCenter").value.trim();
-  let c = null, src = "";
-  if (txt) { c = parseCenter(txt); src = "eingegeben"; if (!c) { terr.jobMsg = "Mittelpunkt nicht lesbar – Beispiel: 46.68, 7.86"; return; } }
-  else if (cur.gga && Core.ggaHasFix(cur.gga) && performance.now() - tLast.gga <= STALE_MS) { c = { lat: cur.gga.lat, lon: cur.gga.lon }; src = "Vario-GPS"; }
-  else {
-    terr.jobMsg = "Standort wird ermittelt …";
-    try { c = await phonePosition(); src = "Handy-Standort"; }
-    catch (e) { terr.jobMsg = "Keine Position: " + errText(e) + " – Mittelpunkt eingeben"; return; }
-  }
   const all = Core.terrainTilesAround(terr.grid, c.lat, c.lon, settings.terrRadius * 1000).filter(k => k in terr.index.kacheln);
   if (!all.length) { terr.jobMsg = "Keine Geländedaten im Umkreis von " + c.lat.toFixed(3) + ", " + c.lon.toFixed(3); return; }
   const todo = all.filter(k => !terr.stored.has(k));
   const mb = todo.reduce((s, k) => s + terr.index.kacheln[k], 0) / 1e6;
-  try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) {}
   const job = terr.job = { done: 0, total: todo.length, errors: 0, lastErr: "", stop: false, bytes: 0, mb, all: all.length, src };
-  $("btnTerrStop").disabled = false;
   const worker = async () => {
     while (!job.stop) {
       const k = todo.shift();
@@ -2683,15 +2779,15 @@ async function terrainDownloadArea() {
     }
   };
   await Promise.all([worker(), worker(), worker()]);
-  terr.job = null; $("btnTerrStop").disabled = true;
+  terr.job = null;
   terr.failed.clear();
   terr.jobMsg = (job.stop && job.done < job.total ? "abgebrochen: " : "fertig: ") + (job.done - job.errors) + " neu, "
     + (all.length - job.total) + " schon vorhanden" + (job.errors ? ", " + job.errors + " Fehler (" + job.lastErr + ")" : "")
     + " · " + settings.terrRadius + " km um " + c.lat.toFixed(3) + ", " + c.lon.toFixed(3) + " (" + src + ")";
   if (job.errors) log("Gelände-Download: " + job.errors + " Fehler, zuletzt: " + job.lastErr, "err");
 }
-$("btnTerrLoad").addEventListener("click", () => { terrainDownloadArea().catch(e => { terr.job = null; terr.jobMsg = "Fehler: " + errText(e); }); });
-$("btnTerrStop").addEventListener("click", () => { if (terr.job) terr.job.stop = true; });
+$("btnTerrLoad").addEventListener("click", () => { gebietSpeichern().catch(e => { terr.jobMsg = "Fehler: " + errText(e); }); });
+$("btnTerrStop").addEventListener("click", () => { gebietStop = true; if (terr.job) terr.job.stop = true; if (kk.job) kk.job.stop = true; });
 $("btnTerrClear").addEventListener("click", async () => {
   if (terr.job) return;
   if (!confirm("Alle offline gespeicherten Geländedaten löschen? Ohne Netz gibt es danach keine Höhe über Grund.")) return;
@@ -2717,6 +2813,399 @@ function terrainDebugText() {
     + " · Speicher " + terr.mem.size + " · offline " + terr.stored.size + (terr.pending.size ? " · lädt " + terr.pending.size : "")
     + (f ? " · Fehler: " + f.msg : "");
 }
+
+/* =====================================================================
+   KARTE (Berechnungen und Zeichnen in karte.js)
+   Hier: Einstellungen, Kachelspeicher (Speicher → IndexedDB → Netz), Spur, Thermiken, Ziel, Bedienung.
+   Kartenbilder über wmts.geo.admin.ch: Landeskarte © swisstopo, Segelflugkarte © BAZL.
+   ===================================================================== */
+const KARTE_OK = typeof Karte !== "undefined";
+if (!KARTE_OK) setTimeout(() => log("Karte nicht verfügbar: karte.js wurde nicht geladen (offline ohne Cache?). Die übrige Anzeige funktioniert.", "err"), 0);
+const KARTE_KEY = "flugapp.karte.v1";
+const KK_MEM_MAX = 120;            // so viele Kartenbilder bleiben im Speicher (je ~256 KB)
+const KK_NETZ_PARALLEL = 4;        // gleichzeitige Downloads
+const KK_RETRY_MS = 30000;         // fehlgeschlagenes Kartenbild: so lange bis zum nächsten Versuch
+const KK_MB_TOPO = 0.03, KK_MB_LUFT = 0.13;   // geschätzte Grösse pro Bild (MB)
+const KK_MAX_MB = 250;             // „Gebiet offline speichern“: grösseres Gebiet wird abgelehnt
+const KK_FRAGEN_MB = 80;           // ab so viel neuen Daten vorher fragen
+const KURS_MIN_KMH = 8;            // darunter bleibt die Karte bei „Kurs oben“ stehen (Kurs unsicher)
+const PFEIL_MIN_KMH = 5;           // darunter zeigt die eigene Position keinen Pfeil, nur einen Punkt
+const SPUR_MIN_M = 15, SPUR_MAX = 6000;
+const THERMIK_MIN_M = 30;          // Thermik erst ab diesem Höhengewinn als Punkt zeigen (Probierkreise weglassen)
+const KARTE_FARBEN = {
+  hell:   { hinter: "#c9cdd3", spur: "#d4007a", pfeil: "#ffd600", pfeilRand: "#000", ziel: "#1d4ed8", thermik: "#f97316", text: "#000", textHinter: "rgba(255,255,255,.85)" },
+  dunkel: { hinter: "#2a2d33", spur: "#d4007a", pfeil: "#ffd600", pfeilRand: "#000", ziel: "#1d4ed8", thermik: "#f97316", text: "#000", textHinter: "rgba(255,255,255,.85)" },
+};
+
+/* ---------- Einstellungen (eigener Schlüssel): Ausrichtung, Spur, Zoom, Wegpunkte, Ziel ---------- */
+function normalisiereKarte(s) {
+  s = s && typeof s === "object" ? s : {};
+  const punkt = (p) => p && typeof p === "object" && Number.isFinite(+p.lat) && Number.isFinite(+p.lon) && Math.abs(+p.lat) <= 90 && Math.abs(+p.lon) <= 180
+    ? { name: String(p.name || "Wegpunkt").slice(0, 40), lat: +p.lat, lon: +p.lon } : null;
+  const z = s.zoom && typeof s.zoom === "object" ? s.zoom : {};
+  const zoom = (e) => { const E = KARTE_OK && Karte.EBENEN[e]; return E ? clampInt(z[e], E.zoomMin, E.zoomMax, E.zoomStandard) : 12; };
+  return {
+    ausrichtung: s.ausrichtung === "nord" ? "nord" : "kurs",
+    spur: s.spur === undefined ? true : !!s.spur,
+    offlineZoom: clampInt(s.offlineZoom, 12, 15, 14),
+    zoom: { topo: zoom("topo"), luft: zoom("luft") },
+    wegpunkte: (Array.isArray(s.wegpunkte) ? s.wegpunkte : []).map(punkt).filter(Boolean).slice(0, 200),
+    ziel: punkt(s.ziel),
+  };
+}
+let karteSet = (() => { try { return normalisiereKarte(JSON.parse(lsGet(KARTE_KEY) || "null")); } catch (e) { return normalisiereKarte(null); } })();
+function saveKarte() { lsSet(KARTE_KEY, JSON.stringify(karteSet)); }
+
+/* ---------- Flugdaten für die Karte: Position, Kurs, Spur und Thermiken des laufenden Flugs ---------- */
+const kflug = { sid: null, spur: [], thermiken: [], aktTh: null, version: 0, pos: null, posT: -1e12, kurs: null, kartenKurs: null };
+function kartenFuettern(tp, g) {
+  if (!KARTE_OK) return;
+  kflug.pos = { lat: g.lat, lon: g.lon }; kflug.posT = tp;
+  // Kurs: der Pfeil folgt immer (ab PFEIL_MIN_KMH); die Karte dreht bei „Kurs oben“ nur im Geradeausflug, beim Kreisen bleibt sie stehen
+  const r = cur.rmc, frisch = r && r.valid && r.speedKn !== null && Number.isFinite(r.course) && tp - tLast.rmc <= STALE_MS;
+  const kmh = frisch ? r.speedKn * 1.852 : null;
+  if (kmh === null || kmh < PFEIL_MIN_KMH) kflug.kurs = null; else kflug.kurs = r.course;
+  if (kmh !== null && kmh >= KURS_MIN_KMH && FlugPhase.wert.phase !== "kreisen") kflug.kartenKurs = r.course;
+  if (!rec.active) return;   // Spur und Thermiken gehören zum aufgezeichneten Flug
+  if (kflug.sid !== rec.session.id) { kflug.sid = rec.session.id; kflug.spur = []; kflug.thermiken = []; kflug.aktTh = null; kflug.version++; }
+  if (Karte.spurHinzu(kflug.spur, g.lat, g.lon, SPUR_MIN_M, SPUR_MAX)) kflug.version++;
+  // Thermik: Mittelpunkt der Positionen, grösster Höhengewinn ab Beginn der Drehung (wie im Kasten „Höhengewinn Thermik“,
+  // aber ohne das Sinken im Geradeausflug, bis die Kreiserkennung das Ende meldet)
+  const th = KW_OK ? phasenwahl.getZustand().thermik : null;
+  if (th) {
+    let a = kflug.aktTh;
+    if (!a || a.beginn !== th.beginn) { a = kflug.aktTh = { beginn: th.beginn, sLat: 0, sLon: 0, n: 0, lat: g.lat, lon: g.lon, gewinn: null, text: "" }; kflug.thermiken.push(a); }
+    a.sLat += g.lat; a.sLon += g.lon; a.n++; a.lat = a.sLat / a.n; a.lon = a.sLon / a.n;
+    const gw = g.alt !== null && Number.isFinite(th.hoeheBeginn) ? g.alt - th.hoeheBeginn : null;
+    if (gw !== null && (a.gewinn === null || gw > a.gewinn)) { a.gewinn = gw; a.text = Core.fmtSigned(gw, 0).text + " m"; }
+    kflug.version++;
+  } else if (kflug.aktTh) { kflug.aktTh = null; kflug.version++; }
+}
+
+/* ---------- Kachelspeicher: Speicher (LRU) → IndexedDB "flugapp-karte" → Netz (und dann speichern) ---------- */
+const kk = { mem: new Map(), pending: new Set(), failed: new Map(), stored: new Set(), netz: 0, version: 0, job: null, jobMsg: "–",
+             letzterFehler: "", speicherMb: null, speicherZeit: -1e12 };
+const kkWarte = [];
+let kdbPromise = null;
+function kdb() {
+  if (!kdbPromise) kdbPromise = new Promise((resolve, reject) => {
+    if (!("indexedDB" in window)) { reject(new Error("IndexedDB nicht verfügbar")); return; }
+    const r = indexedDB.open("flugapp-karte", 1);
+    r.onupgradeneeded = () => { r.result.createObjectStore("tiles"); };
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
+  kdbPromise.catch(() => { kdbPromise = null; });
+  return kdbPromise;
+}
+async function kdbReq(mode, fn) {
+  const db = await kdb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("tiles", mode);
+    const req = fn(tx.objectStore("tiles"));
+    let result;
+    if (req) req.onsuccess = () => { result = req.result; };
+    tx.oncomplete = () => resolve(result);
+    tx.onerror = () => reject(tx.error || (req && req.error));
+    tx.onabort = () => reject(tx.error || new Error("Speichern abgebrochen (Speicher voll?)"));
+  });
+}
+async function kartenInit() {
+  if (!KARTE_OK) return;
+  try { const keys = await kdbReq("readonly", s => s.getAllKeys()); kk.stored = new Set((keys || []).map(String)); }
+  catch (e) { /* ohne IndexedDB: nur Speicher + Netz */ }
+}
+async function kartenNetz(url) {
+  if (kk.netz >= KK_NETZ_PARALLEL) await new Promise(r => kkWarte.push(r));
+  kk.netz++;
+  try {
+    const res = await fetchTimeout(url, 15000);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return await res.arrayBuffer();
+  } finally { kk.netz--; const n = kkWarte.shift(); if (n) n(); }
+}
+async function kartenSpeichern(key, buf) {
+  await kdbReq("readwrite", s => s.put(buf, key));
+  kk.stored.add(key);
+}
+async function bildAus(buf, ebene) {
+  const blob = new Blob([buf], { type: ebene === "luft" ? "image/png" : "image/jpeg" });
+  if (typeof createImageBitmap === "function") return await createImageBitmap(blob);
+  const url = URL.createObjectURL(blob);
+  try { const img = new Image(); img.src = url; await img.decode(); return img; } finally { URL.revokeObjectURL(url); }
+}
+// Kartenbild für das Zeichnen: sofort aus dem Speicher oder null (dann im Hintergrund laden, ausser nurNachsehen)
+function kartenKachel(ebene, z, x, y, nurNachsehen) {
+  const key = Karte.kachelSchluessel(ebene, z, x, y);
+  const b = kk.mem.get(key);
+  if (b) { kk.mem.delete(key); kk.mem.set(key, b); return b; }   // zuletzt gebraucht → ans Ende
+  if (nurNachsehen || kk.pending.has(key) || !Karte.kachelImGebiet(z, x, y)) return null;
+  const f = kk.failed.get(key);
+  if (f && performance.now() - f < KK_RETRY_MS) return null;
+  kk.pending.add(key);
+  kartenLaden(key, ebene, z, x, y);
+  return null;
+}
+async function kartenLaden(key, ebene, z, x, y) {
+  try {
+    let buf = null;
+    if (kk.stored.has(key)) { try { buf = await kdbReq("readonly", s => s.get(key)); } catch (e) { buf = null; } }
+    if (!buf) {
+      buf = await kartenNetz(Karte.kachelUrl(ebene, z, x, y));
+      kartenSpeichern(key, buf).catch(e => { kk.letzterFehler = "speichern: " + errText(e); });
+    }
+    const bild = await bildAus(buf, ebene);
+    kk.mem.set(key, bild);
+    while (kk.mem.size > KK_MEM_MAX) {
+      const k0 = kk.mem.keys().next().value, b0 = kk.mem.get(k0);
+      kk.mem.delete(k0);
+      if (b0 && typeof b0.close === "function") b0.close();
+    }
+    kk.failed.delete(key); kk.version++;
+  } catch (e) { kk.failed.set(key, performance.now()); kk.letzterFehler = key + ": " + errText(e); }
+  finally { kk.pending.delete(key); }
+}
+
+/* ---------- Karten offline speichern (Teil von „Gebiet offline speichern“, gleicher Radius) ---------- */
+async function kartenDownload(c, src) {
+  if (!KARTE_OK || kk.job) return;
+  const radius = settings.terrRadius * 1000, E = Karte.EBENEN;
+  const liste = [
+    ...Karte.kachelnUmkreis(c.lat, c.lon, radius, E.topo.zoomMin, karteSet.offlineZoom).map(t => Object.assign(t, { e: "topo" })),
+    ...Karte.kachelnUmkreis(c.lat, c.lon, radius, E.luft.zoomMin, E.luft.zMax).map(t => Object.assign(t, { e: "luft" })),
+  ];
+  if (!liste.length) { kk.jobMsg = "ausserhalb der Schweiz – keine Karten"; return; }
+  // Grösse schätzen (gemessen: Landeskarte ~30 KB, Segelflugkarte ~130 KB pro Bild); kein Download der ganzen Schweiz
+  const mbVon = (l) => l.reduce((s, t) => s + (t.e === "luft" ? KK_MB_LUFT : KK_MB_TOPO), 0);
+  const mbGebiet = mbVon(liste);
+  if (mbGebiet > KK_MAX_MB) {
+    kk.jobMsg = "zu gross: " + liste.length + " Bilder, ca. " + Math.round(mbGebiet) + " MB (höchstens " + KK_MAX_MB + " MB) – Radius oder Zoom verkleinern";
+    return;
+  }
+  const todo = liste.filter(t => !kk.stored.has(Karte.kachelSchluessel(t.e, t.z, t.x, t.y)));
+  const mbNeu = mbVon(todo);
+  if (mbNeu > KK_FRAGEN_MB && !confirm("Karten offline speichern: " + todo.length + " Bilder, ca. " + Math.round(mbNeu) + " MB. Fortfahren?")) {
+    kk.jobMsg = "nicht gespeichert (ca. " + Math.round(mbNeu) + " MB)"; return;
+  }
+  const job = kk.job = { done: 0, total: todo.length, errors: 0, lastErr: "", stop: false, bytes: 0 };
+  const worker = async () => {
+    while (!job.stop && !gebietStop) {
+      const t = todo.shift();
+      if (!t) return;
+      try { const b = await kartenNetz(Karte.kachelUrl(t.e, t.z, t.x, t.y)); await kartenSpeichern(Karte.kachelSchluessel(t.e, t.z, t.x, t.y), b); job.bytes += b.byteLength; }
+      catch (e) { job.errors++; job.lastErr = errText(e); if (/abgebrochen|quota|Speicher/i.test(job.lastErr)) job.stop = true; }
+      job.done++;
+    }
+  };
+  await Promise.all([worker(), worker(), worker(), worker()]);
+  kk.job = null; kk.failed.clear(); kk.speicherZeit = -1e12;
+  kk.jobMsg = ((job.stop || gebietStop) && job.done < job.total ? "abgebrochen: " : "fertig: ") + (job.done - job.errors) + " neu ("
+    + (job.bytes / 1e6).toFixed(1) + " MB), " + (liste.length - job.total) + " schon vorhanden" + (job.errors ? ", " + job.errors + " Fehler (" + job.lastErr + ")" : "")
+    + " · Landeskarte bis Zoom " + karteSet.offlineZoom + ", Segelflugkarte bis " + E.luft.zMax + " · " + settings.terrRadius + " km (" + src + ")";
+  if (job.errors) log("Karten-Download: " + job.errors + " Fehler, zuletzt: " + job.lastErr, "err");
+}
+$("btnKarteClear").addEventListener("click", async () => {
+  if (kk.job || gebietLaeuft) return;
+  if (!confirm("Alle offline gespeicherten Kartenbilder löschen? Ohne Netz bleibt die Karte danach leer.")) return;
+  try { await kdbReq("readwrite", s => s.clear()); kk.stored = new Set(); kk.jobMsg = "gelöscht"; kk.speicherZeit = -1e12; }
+  catch (e) { kk.jobMsg = "Löschen fehlgeschlagen: " + errText(e); }
+});
+function renderKarteSettings() {
+  const now = performance.now();
+  if (now - kk.speicherZeit > 5000 && navigator.storage && navigator.storage.estimate) {
+    kk.speicherZeit = now;
+    navigator.storage.estimate().then(e => { kk.speicherMb = e && e.usage ? e.usage / 1e6 : null; }).catch(() => {});
+  }
+  setText("kStored", kk.stored.size + " Kartenbilder" + (kk.speicherMb !== null ? " · App-Speicher gesamt " + kk.speicherMb.toFixed(0) + " MB" : ""));
+  const j = kk.job;
+  setText("kJob", j ? "läuft: " + j.done + " / " + j.total + " Bilder (" + (j.bytes / 1e6).toFixed(1) + " MB)" + (j.errors ? " · " + j.errors + " Fehler" : "")
+    + (j.stop || gebietStop ? " · wird abgebrochen …" : "") : gebietLaeuft ? "wartet auf das Gelände …" : kk.jobMsg);
+}
+function karteDebugText() {
+  if (!KARTE_OK) return "karte.js nicht geladen";
+  return "im Speicher " + kk.mem.size + " · offline " + kk.stored.size + (kk.pending.size ? " · lädt " + kk.pending.size : "")
+    + (kk.failed.size ? " · " + kk.failed.size + " fehlgeschlagen" : "") + " · Spur " + kflug.spur.length + " Punkte · Thermiken " + kflug.thermiken.length
+    + (kk.letzterFehler ? " · zuletzt: " + kk.letzterFehler : "");
+}
+
+/* ---------- Ziel: Distanz, Peilung, nötige Gleitzahl ---------- */
+let zielHoehe = { key: "", h: null };
+function zielInfo(now) {
+  const z = karteSet.ziel;
+  if (!z || !KARTE_OK) return null;
+  const key = z.lat + "," + z.lon;
+  if (zielHoehe.key !== key) zielHoehe = { key, h: null };
+  if (zielHoehe.h === null) { const t = terrainAt(z.lat, z.lon, true); if (t.h !== null) zielHoehe.h = t.h; }
+  const p = kflug.pos, frisch = !!p && now - kflug.posT <= STALE_MS;
+  const info = { name: z.name, dist: null, peil: null, gz: null, ueber: null, frisch };
+  if (!p) return info;
+  info.dist = Karte.distanz(p.lat, p.lon, z.lat, z.lon);
+  info.peil = Karte.peilung(p.lat, p.lon, z.lat, z.lon);
+  const g = cur.gga, alt = frisch && g && Core.ggaHasFix(g) && g.alt !== null ? g.alt : null;
+  const n = Karte.noetigeGleitzahl(info.dist, alt, zielHoehe.h);
+  info.gz = n.gz; info.ueber = n.hoeheUeber;
+  return info;
+}
+const fmtKm = (m) => m < 9950 ? (m / 1000).toFixed(1) : String(Math.round(m / 1000));
+const fmtGz = (i) => i.gz !== null ? (i.gz >= 99.5 ? "> 99" : i.gz.toFixed(i.gz < 20 ? 1 : 0)) : i.ueber !== null ? "unter Ziel" : "–";
+function computeZiel(now, noData) {
+  const i = zielInfo(now);
+  if (!i) return { text: "–", sub: "kein Ziel gesetzt", stale: false };
+  if (i.dist === null) return { text: "–", sub: i.name + " · keine Position", stale: noData };
+  return { text: fmtKm(i.dist), sub: Math.round(i.peil) + "° · GZ " + fmtGz(i) + " · " + i.name, stale: noData || !i.frisch };
+}
+
+/* ---------- Kartenkasten: Canvas, Zoomknöpfe, Zielleiste; langes Drücken setzt das Ziel ---------- */
+let zielRueck = null;   // {ziel (vorheriges), bis} nach langem Drücken: „Rückgängig“
+function karteKasten(pid, id, ebene) {
+  const el = document.createElement("div");
+  el.className = "ibox karte";
+  el.dataset.cat = "move";
+  el.innerHTML = `<canvas></canvas><div class="kziel"><span class="zw"></span><span class="zn"></span><button type="button" class="zr">Rückgängig</button></div>
+    <div class="kmsg"></div><div class="kz"><button type="button" class="zin" aria-label="Hineinzoomen">+</button><button type="button" class="zout" aria-label="Herauszoomen">−</button></div>`;
+  const q = (s) => el.querySelector(s);
+  const r = { id, pid, karte: ebene, el, cv: q("canvas"), zbar: q(".kziel"), zw: q(".zw"), zn: q(".zn"), zr: q(".zr"), msg: q(".kmsg"),
+              zin: q(".zin"), zout: q(".zout"), sig: "", ansicht: null, druck: null, lastCls: "", lastMsg: null, lastZiel: null };
+  r.ctx = r.cv.getContext("2d");
+  r.zin.addEventListener("click", () => karteZoom(ebene, +1));
+  r.zout.addEventListener("click", () => karteZoom(ebene, -1));
+  r.zr.addEventListener("click", () => { if (!zielRueck) return; karteSet.ziel = zielRueck.ziel; zielRueck = null; saveKarte(); karteNeu(); render(); });
+  const abbruch = () => { if (r.druck) { clearTimeout(r.druck.timer); r.druck = null; } };
+  r.cv.addEventListener("pointerdown", (e) => {
+    abbruch();
+    const rect = r.cv.getBoundingClientRect(), x = e.clientX - rect.left, y = e.clientY - rect.top;
+    r.druck = { x: e.clientX, y: e.clientY, timer: setTimeout(() => { r.druck = null; karteZielSetzen(r, x, y); }, 700) };
+  });
+  r.cv.addEventListener("pointermove", (e) => { if (r.druck && Math.hypot(e.clientX - r.druck.x, e.clientY - r.druck.y) > 12) abbruch(); });
+  for (const n of ["pointerup", "pointercancel", "pointerleave"]) r.cv.addEventListener(n, abbruch);
+  r.cv.addEventListener("contextmenu", (e) => e.preventDefault());
+  r.abbruch = abbruch;
+  return r;
+}
+function karteAbbauen(r) { if (r.abbruch) r.abbruch(); }
+function karteNeu() { for (const pid in pageRefs) for (const r of pageRefs[pid]) if (r.karte) r.sig = ""; }
+function karteZoom(ebene, d) {
+  if (!KARTE_OK) return;
+  const E = Karte.EBENEN[ebene];
+  karteSet.zoom[ebene] = Math.max(E.zoomMin, Math.min(E.zoomMax, karteSet.zoom[ebene] + d));
+  saveKarte(); render();
+}
+function karteZielSetzen(r, x, y) {
+  if (!KARTE_OK || !r.ansicht) return;
+  const w = Karte.bildZuWelt(r.ansicht, x, y), p = Karte.ausWelt(w.x, w.y, r.ansicht.z);
+  if (!Karte.imGebiet(p.lat, p.lon)) return;
+  zielRueck = { ziel: karteSet.ziel, bis: performance.now() + 8000 };
+  karteSet.ziel = { name: "Kartenpunkt " + new Date().toLocaleTimeString("de-CH", { hour: "2-digit", minute: "2-digit" }), lat: p.lat, lon: p.lon };
+  saveKarte(); karteNeu();
+  try { if (navigator.vibrate) navigator.vibrate(40); } catch (e) {}
+  if (activeTab === "einst") buildKarteSettingsUI();
+  render();
+}
+function renderKarte(r, now, noData) {
+  const zeigeMsg = (t) => { if (t !== r.lastMsg) { r.msg.textContent = t || ""; r.msg.className = "kmsg" + (t ? " an" : ""); r.lastMsg = t; } };
+  if (!KARTE_OK) { zeigeMsg("Karte nicht geladen"); return; }
+  const sw = $("swiper"), stelle = sw.scrollLeft / Math.max(1, sw.clientWidth);
+  if (Math.abs(PAGE_IDS.indexOf(r.pid) - stelle) >= 1) return;   // Seite gerade nicht sichtbar
+  const W = r.cv.clientWidth, H = r.cv.clientHeight;
+  if (!W || !H) return;
+  const dpr = Math.min(3, window.devicePixelRatio || 1);
+  if (r.cv.width !== Math.round(W * dpr) || r.cv.height !== Math.round(H * dpr)) { r.cv.width = Math.round(W * dpr); r.cv.height = Math.round(H * dpr); r.sig = ""; }
+  const ebene = r.karte, z = karteSet.zoom[ebene], E = Karte.EBENEN[ebene];
+  const p = kflug.pos, frisch = !!p && now - kflug.posT <= STALE_MS;
+  const ziel = karteSet.ziel, dunkel = document.documentElement.getAttribute("data-theme") === "dark";
+  const kartenKurs = karteSet.ausrichtung === "kurs" ? kflug.kartenKurs : null;
+  const sig = [W, H, dpr, z, p ? p.lat.toFixed(6) + "," + p.lon.toFixed(6) : "-", kflug.kurs, kartenKurs, karteSet.ausrichtung, kk.version,
+               kflug.version, karteSet.spur, ziel ? ziel.lat + "," + ziel.lon : "-", dunkel].join("|");
+  if (sig !== r.sig) {
+    r.sig = sig;
+    const erg = Karte.zeichne(r.ctx, {
+      ebene, z, breite: W, hoehe: H, dpr, pos: p, kurs: kflug.kurs, kartenKurs, ausrichtung: karteSet.ausrichtung, kachel: kartenKachel,
+      spur: karteSet.spur ? kflug.spur : null, ziel,
+      thermiken: ebene === "topo" ? kflug.thermiken.filter(t => t === kflug.aktTh || t.gewinn >= THERMIK_MIN_M) : [],
+      farben: KARTE_FARBEN[dunkel ? "dunkel" : "hell"], dunkel,
+    });
+    r.ansicht = erg.ansicht; r.fehlend = erg.fehlend;
+  }
+  // Hinweis in der Mitte
+  zeigeMsg(!p ? "keine Position" : !Karte.imGebiet(p.lat, p.lon) ? "ausserhalb der Schweiz" : !frisch ? "Keine Daten"
+    : r.fehlend && !kk.pending.size && kk.failed.size ? "Kartenbilder fehlen (offline?)" : "");
+  const cls = "ibox karte" + (p && !frisch ? " stale" : "");
+  if (cls !== r.lastCls) { r.el.className = cls; r.lastCls = cls; }
+  // Zielleiste oben
+  if (zielRueck && now > zielRueck.bis) zielRueck = null;
+  let zw = "", zn = "", an = false;
+  if (zielRueck) { zw = "Ziel gesetzt"; an = true; }
+  else if (ziel) {
+    const i = zielInfo(now); an = true;
+    zw = i && i.dist !== null ? "◎ " + fmtKm(i.dist) + " km · GZ " + fmtGz(i) : "◎ Ziel";
+    zn = ziel.name;
+  }
+  const zs = an + "|" + zw + "|" + zn + "|" + !!zielRueck;
+  if (zs !== r.lastZiel) {
+    r.lastZiel = zs;
+    r.zbar.className = "kziel" + (an ? " an" : "");
+    r.zw.textContent = zw; r.zn.textContent = zn; r.zr.style.display = zielRueck ? "" : "none";
+  }
+  if (r.zin.disabled !== (z >= E.zoomMax)) r.zin.disabled = z >= E.zoomMax;
+  if (r.zout.disabled !== (z <= E.zoomMin)) r.zout.disabled = z <= E.zoomMin;
+}
+
+/* ---------- Einstellungen: Ziel, Wegpunkte, Ausrichtung, Spur, Offline-Zoom ---------- */
+function buildKarteSettingsUI() {
+  $("kAusrichtung").value = karteSet.ausrichtung;
+  $("kSpur").checked = karteSet.spur;
+  $("kOfflineZoom").value = String(karteSet.offlineZoom);
+  if (!KARTE_OK) { setText("kZiel", "karte.js nicht geladen"); return; }
+  const z = karteSet.ziel;
+  setText("kZiel", z ? z.name + " · " + Karte.formatKoordinaten(z.lat, z.lon) : "keines");
+  $("btnZielWeg").disabled = !z;
+  const p = kflug.pos, wp = karteSet.wegpunkte;
+  $("kWpListe").innerHTML = wp.length ? wp.map((w, i) => {
+    const istZiel = z && z.lat === w.lat && z.lon === w.lon;
+    const d = p ? " · " + fmtKm(Karte.distanz(p.lat, p.lon, w.lat, w.lon)) + " km" : "";
+    return `<div class="sess"><div class="t">${esc(w.name)}${istZiel ? " · Ziel" : ""}</div><div class="m">${esc(Karte.formatKoordinaten(w.lat, w.lon) + d)}</div>
+      <div class="row"><button class="secondary" data-wp-ziel="${i}"${istZiel ? " disabled" : ""}>Als Ziel</button><button class="danger" data-wp-weg="${i}">Löschen</button></div></div>`;
+  }).join("") : '<span class="hint">Keine Wegpunkte gespeichert</span>';
+}
+$("kWpListe").addEventListener("click", (e) => {
+  const b = e.target.closest && e.target.closest("button");
+  if (!b) return;
+  const wp = karteSet.wegpunkte;
+  if (b.dataset.wpZiel !== undefined) {
+    const w = wp[+b.dataset.wpZiel];
+    if (w) { karteSet.ziel = { name: w.name, lat: w.lat, lon: w.lon }; zielRueck = null; }
+  } else if (b.dataset.wpWeg !== undefined) {
+    const w = wp[+b.dataset.wpWeg];
+    if (!w || !confirm("Wegpunkt „" + w.name + "“ löschen?")) return;
+    wp.splice(+b.dataset.wpWeg, 1);
+  } else return;
+  saveKarte(); karteNeu(); buildKarteSettingsUI();
+});
+$("btnZielWeg").addEventListener("click", () => { karteSet.ziel = null; zielRueck = null; saveKarte(); karteNeu(); buildKarteSettingsUI(); });
+$("btnWpAdd").addEventListener("click", () => {
+  if (!KARTE_OK) return;
+  const k = Karte.leseKoordinaten($("kWpKoord").value);
+  if (!k) { setText("kWpMsg", "Koordinaten nicht lesbar – Beispiel: 46.68, 7.86 oder 2'630'000 / 1'170'000"); return; }
+  const name = $("kWpName").value.trim().slice(0, 40) || "Wegpunkt " + (karteSet.wegpunkte.length + 1);
+  karteSet.wegpunkte.push({ name, lat: k.lat, lon: k.lon });
+  saveKarte(); $("kWpName").value = ""; $("kWpKoord").value = "";
+  setText("kWpMsg", "„" + name + "“ gespeichert (" + k.format + ")" + (Karte.imGebiet(k.lat, k.lon) ? "" : " – liegt ausserhalb der Karte"));
+  buildKarteSettingsUI();
+});
+$("btnWpHier").addEventListener("click", async () => {
+  if (!KARTE_OK) return;
+  let c = null, src = "Vario-GPS";
+  if (cur.gga && Core.ggaHasFix(cur.gga) && performance.now() - tLast.gga <= STALE_MS) c = { lat: cur.gga.lat, lon: cur.gga.lon };
+  else {
+    setText("kWpMsg", "Standort wird ermittelt …");
+    try { c = await phonePosition(); src = "Handy-Standort"; } catch (e) { setText("kWpMsg", "Keine Position: " + errText(e)); return; }
+  }
+  $("kWpKoord").value = Karte.formatKoordinaten(c.lat, c.lon);
+  setText("kWpMsg", "Position übernommen (" + src + "). Name eingeben und „Wegpunkt speichern“ tippen.");
+});
+$("kAusrichtung").addEventListener("change", (e) => { e.stopPropagation(); karteSet.ausrichtung = $("kAusrichtung").value === "nord" ? "nord" : "kurs"; saveKarte(); });
+$("kSpur").addEventListener("change", (e) => { e.stopPropagation(); karteSet.spur = $("kSpur").checked; saveKarte(); });
+$("kOfflineZoom").addEventListener("change", (e) => { e.stopPropagation(); karteSet.offlineZoom = clampInt($("kOfflineZoom").value, 12, 15, 14); saveKarte(); });
 
 /* =====================================================================
    OFFLINE (Service Worker)
@@ -2757,6 +3246,8 @@ showTab(activeTab);
 detectInterrupted();
 checkOffline();
 terrainInit();
+kartenInit();
+buildKarteSettingsUI();
 requestWakeLock();
 
 /* ---------- Laufende Statusanzeige ---------- */
