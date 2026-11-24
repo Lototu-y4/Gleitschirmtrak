@@ -141,6 +141,35 @@
   .ibox.stale .num { color: var(--text) !important; }
   .ibox.stale .flag { display: inline-block; }
 
+  /* ---------- Wind-Kachel: Zahl, Einheit klein dahinter, Pfeil rechts ---------- */
+  .ibox .nu { flex: 1; min-width: 0; display: flex; align-items: baseline; overflow: hidden; }
+  .ibox .nu .u { flex: none; font-size: 14px; font-weight: 700; color: var(--label); margin-left: 3px; }
+  .ibox .wpf { flex: none; margin-left: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 100%; width: min(48cqh, 30cqw); min-width: 44px; }
+  .ibox .wpf svg { width: 100%; aspect-ratio: 1; max-height: calc(100% - 15px); overflow: visible; }
+  .ibox .wpf .ring { fill: none; stroke: var(--line); stroke-width: 3; }
+  .ibox .wpf .oben { stroke: var(--label); stroke-width: 5; stroke-linecap: round; }
+  .ibox .wpf .nmark { fill: var(--label); font: 800 22px -apple-system, sans-serif; text-anchor: middle; display: none; }
+  .ibox .wpf.nord .nmark { display: block; } .ibox .wpf.nord .oben { display: none; }
+  .ibox .wpf .arr { fill: var(--c-move); stroke: var(--c-move); stroke-width: 5; stroke-linejoin: round; transition: transform .4s ease; }
+  .ibox .wpf .wbz { font-size: 11px; font-weight: 700; color: var(--label); white-space: nowrap; line-height: 1.2; }
+  .ibox .wpf.aus .arr, .ibox .wpf.aus .wbz { visibility: hidden; }
+  .ibox .wpf.dim .arr { opacity: .25; }
+  .ibox .wpf.dim .wbz { color: var(--warn); }
+  /* Windschätzung abgelaufen (eigene Markierung, nicht dasselbe wie „keine Daten“) */
+  .ibox.wexp .num, .ibox.wexp .nu .u, .ibox.wexp .wpf svg { opacity: .3; }
+  .ibox.wexp .sub { color: var(--warn); }
+  .ibox.wleer .nu .u { visibility: hidden; }
+
+  /* ---------- Info-Seite: Flugphase als schmale Zeile über den Kästen ---------- */
+  #page-info { display: flex; flex-direction: column; gap: 4px; }
+  #page-info .igrid { flex: 1; min-height: 0; height: auto; }
+  .phasebar { flex: none; display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 10px; background: var(--card);
+    font-size: 17px; font-weight: 750; white-space: nowrap; overflow: hidden; font-variant-numeric: tabular-nums; }
+  .phasebar .pdot { width: 11px; height: 11px; border-radius: 50%; background: var(--dim); flex: none; }
+  .phasebar.kreisen .pdot { background: var(--c-vert); }
+  .phasebar .psub { color: var(--dim); font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; }
+
   /* ---------- Allgemeine Bedienelemente ---------- */
   button { font-size: 1.1rem; font-weight: 750; border: 0; border-radius: 12px; padding: 14px; min-height: 56px; width: 100%;
     background: var(--accent); color: var(--accent-text); margin-top: 8px; touch-action: manipulation; }
@@ -241,9 +270,17 @@
     <div class="field"><span>Fenster integriertes Steigen (5–120 s)</span><input id="setIntWin" type="number" inputmode="numeric" min="5" max="120" step="1"></div>
     <div class="field"><span>Fenster Gleitzahl (5–60 s)</span><input id="setGlideWin" type="number" inputmode="numeric" min="5" max="60" step="1"></div>
     <div class="field"><span>Gleitzahl: Strich ab Betrag über</span><input id="setGlideMax" type="number" inputmode="numeric" min="5" max="500" step="1"></div>
+    <div class="field"><span>Fenster Ø Geschwindigkeit (5–120 s)</span><input id="setAvgWin" type="number" inputmode="numeric" min="5" max="120" step="1"></div>
 
-    <h2>Seite „Flug“</h2>
-    <div id="cfg-flug"></div>
+    <h2>Wind und Kreiserkennung</h2>
+    <div class="hint">Der Wind wird beim Kreisen aus der Bewegung über Grund geschätzt (keine Fluggeschwindigkeits-Messung). Nur eine Näherung, nicht geprüft gegen einen gemessenen Wind. Die Startwerte sind an eigenen Flügen (iPhone-GPS, 1 Hz) gewählt und müssen mit dem Vario noch justiert werden.</div>
+    <div id="cfg-wind"></div>
+    <button class="secondary" id="btnWindDefaults">Wind und Kreiserkennung: Standard wiederherstellen</button>
+
+    <h2>Seite „Gleiten“</h2>
+    <div id="cfg-gleiten"></div>
+    <h2>Seite „Thermik“</h2>
+    <div id="cfg-thermik"></div>
     <h2>Seite „Info“</h2>
     <div id="cfg-info"></div>
     <button class="secondary" id="btnDefaults">Standard wiederherstellen</button>
@@ -361,8 +398,9 @@
   <!-- ================= FLUG (seitlich wischen) ================= -->
   <section class="page" id="page-fly">
     <div class="swiper" id="swiper">
-      <section class="fpage" id="page-flug"><div class="igrid"></div></section>
-      <section class="fpage" id="page-info"><div class="igrid"></div></section>
+      <section class="fpage" id="page-gleiten"><div class="igrid"></div></section>
+      <section class="fpage" id="page-thermik"><div class="igrid"></div></section>
+      <section class="fpage" id="page-info"><div class="phasebar" id="phaseBar"><span class="pdot"></span><span id="phaseMain">Gleiten</span><span class="psub" id="phaseSub"></span></div><div class="igrid"></div></section>
     </div>
   </section>
 </main>
@@ -373,8 +411,9 @@
   <button data-tab="debug">Debug</button>
 </nav>
 <nav id="ftabs" class="tabbar">
-  <button data-fp="0">Flug</button>
-  <button data-fp="1">Info</button>
+  <button data-fp="0">Gleiten</button>
+  <button data-fp="1">Thermik</button>
+  <button data-fp="2">Info</button>
   <button id="btnMenu" class="menu">Menü</button>
 </nav>
 
@@ -502,6 +541,13 @@ const Core = (() => {
     if (name === "LXWP0") {
       if (f.length < 5) return { ok: false, reason: "format", detail: "LXWP0 mit zu wenig Feldern" };
       return { ok: true, type: "lxwp0", data: parseLXWP0(f) };
+    }
+    /* $LXWPW: laut Handbuch XC Tracer Mini V "the same as LXWP0, but with the information of the calculated wind".
+       Feldfolge, Einheit und Richtungssinn des Gerätewinds sind nirgends beschrieben → nur Baro/Vario wie LXWP0
+       auswerten (damit das Vario nicht fehlt, falls das Gerät auf LXWPW steht), die Windfelder NICHT deuten. */
+    if (name === "LXWPW") {
+      if (f.length < 5) return { ok: false, reason: "format", detail: "LXWPW mit zu wenig Feldern" };
+      return { ok: true, type: "lxwpw", data: parseLXWP0(f), rawFields: f.slice(10) };
     }
     return { ok: true, type: "other", name };
   }
@@ -737,6 +783,10 @@ const Core = (() => {
 })();
 /*CORE-END*/
 </script>
+
+<!-- Kreiserkennung und Windschätzung (eigene Dateien, ohne Abhängigkeiten, in Node getestet) -->
+<script src="./kreisen.js"></script>
+<script src="./wind.js"></script>
 
 <script>
 "use strict";
@@ -1157,7 +1207,7 @@ function handleLine(line, key) {
 /* =====================================================================
    FLUG-ANZEIGE
    ===================================================================== */
-const APP_VERSION = "2026-11-23.4";
+const APP_VERSION = "2026-11-24.2";
 const STALE_MS = 2000;          // ohne neue Daten länger als das → „keine Daten“
 const HOLD_MS = 2000;           // ein Messwert gilt höchstens so lange (Lücken zählen nicht)
 const MIN_COVERAGE = 0.9;       // Fenster gilt als gefüllt ab 90 % Abdeckung
@@ -1167,7 +1217,8 @@ let connState = "none";
 const varioBuf = [], speedBuf = [];
 const cur = { vario: null, baroAlt: null, gga: null, rmc: null };
 const tLast = { vario: -1e12, baro: -1e12, gga: -1e12, rmc: -1e12 };
-const stats = { lines: 0, bad: { bad: 0, nocs: 0, format: 0 }, types: { gga: 0, rmc: 0, lxwp0: 0, other: 0 } };
+const stats = { lines: 0, bad: { bad: 0, nocs: 0, format: 0 }, types: { gga: 0, rmc: 0, lxwp0: 0, lxwpw: 0, other: 0 } };
+let lastLxwpwRaw = null;   // letzte Windfelder aus $LXWPW, unverändert (Bedeutung nicht dokumentiert)
 const lineTimes = [];
 let maxAlt = null;
 let lastRmcDate = null;
@@ -1180,13 +1231,15 @@ function ingestLine(line, tp, te) {
   if (!p.ok) { stats.bad[p.reason] = (stats.bad[p.reason] || 0) + 1; return p; }
   stats.types[p.type] = (stats.types[p.type] || 0) + 1;
   const d = p.data;
-  if (p.type === "lxwp0") {
+  if (p.type === "lxwp0" || p.type === "lxwpw") {
     if (d.vario !== null) { cur.vario = d.vario; tLast.vario = tp; Core.pushSample(varioBuf, tp, d.vario, KEEP_MS); }
     if (d.baroAlt !== null) { cur.baroAlt = d.baroAlt; tLast.baro = tp; }   // nur für Rohlog/IGC, wird nicht angezeigt
+    if (p.type === "lxwpw") lastLxwpwRaw = p.rawFields.join(",");
   } else if (p.type === "rmc") {
     cur.rmc = d; tLast.rmc = tp;
     if (d.date) lastRmcDate = d.date.ddmmyy;
     if (d.valid && d.speedKn !== null) Core.pushSample(speedBuf, tp, d.speedKn * Core.KN_TO_MS, KEEP_MS);
+    if (d.valid) kreisFuettern(tp, d);
   } else if (p.type === "gga") {
     cur.gga = d; tLast.gga = tp;
     if (Core.ggaHasFix(d) && d.alt !== null) maxAlt = Core.nextMax(maxAlt, d.alt);
@@ -1199,7 +1252,18 @@ function ingestLine(line, tp, te) {
 }
 
 /* ---------- Einstellungen ---------- */
-const GRIDS = { "1x1": [1, 1], "1x2": [1, 2], "1x3": [1, 3], "1x4": [1, 4], "2x2": [2, 2], "2x3": [2, 3], "2x4": [2, 4] };
+// [Spalten, Zeilen, Anzahl der ersten Kästen über die ganze Breite]
+const GRIDS = { "1x1": [1, 1, 0], "1x2": [1, 2, 0], "1x3": [1, 3, 0], "1x4": [1, 4, 0], "2x2": [2, 2, 0], "2x3": [2, 3, 0], "2x4": [2, 4, 0],
+                "2x4b": [2, 4, 1] };
+const gridCount = (g) => { const [c, r, b] = GRIDS[g]; return c * r - b * (c - 1); };
+// Position eines Kastens (für die Beschriftung in den Einstellungen)
+function boxPos(g, i) {
+  const [c, , b] = GRIDS[g];
+  if (i < b) return { zeile: i + 1, spalte: null };
+  const j = i - b;
+  return { zeile: b + Math.floor(j / c) + 1, spalte: j % c + 1 };
+}
+const PAGE_IDS = ["gleiten", "thermik", "info"];   // Reihenfolge der Seiten im Flugmodus
 // cat = Farbe des Symbols (vert = Steigen, alt = Höhe, move = Bewegung, sonst Zeit/System); bar = Steigbalken am Rand
 const INSTRUMENTS = {
   climb:    { name: "Steigen", long: "Aktuelles Steigen", unit: "m/s", cat: "vert", bar: true },
@@ -1212,8 +1276,11 @@ const INSTRUMENTS = {
   course:   { name: "Kurs über Grund", long: "Kurs über Grund", unit: "°", cat: "move" },
   gpsQual:  { name: "GPS-Qualität", long: "GPS-Qualität (Satelliten, HDOP)", unit: "Sat", cat: "sys" },
   clock:    { name: "Uhrzeit", long: "Uhrzeit", unit: "", cls: "long", cat: "sys" },
-  recTime:  { name: "Aufzeichnung", long: "Zeit seit Aufzeichnungsstart", unit: "", cls: "long", cat: "sys" },
+  recTime:  { name: "Zeit seit Start", long: "Zeit seit dem Start (ab „Flug starten“)", unit: "", cls: "long", cat: "sys" },
   conn:     { name: "Verbindung", long: "Verbindungsstatus und Datenrate", unit: "", cls: "text", cat: "sys" },
+  wind:     { name: "Wind", long: "Wind (geschätzt beim Kreisen)", unit: "", cls: "wind", cat: "move" },   // am Ende: ändert keine bestehende Anordnung
+  thermGain:{ name: "Höhengewinn Thermik", long: "Höhengewinn in dieser Thermik", unit: "m", cat: "vert" },
+  speedAvg: { name: "Ø Geschw. über Grund", long: "Durchschnittliche Geschwindigkeit über Grund", unit: "km/h", cat: "move" },
 };
 // Symbole (24er-Raster, Linien in currentColor)
 const ICONS = {
@@ -1229,12 +1296,16 @@ const ICONS = {
   clock:    '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
   recTime:  '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.8 2M9.5 2.5h5M12 2.5v3.5"/>',
   conn:     '<path d="M7 7l10 10-5 4V3l5 4L7 17"/>',
+  wind:     '<path d="M3 8h11a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h7"/>',
+  thermGain:'<path d="M12 21c-4 0-6-2-6-4.5S9 12 12 12s6-2 6-4.5S16 3 12 3"/><path d="M9 6l3-3 3 3"/>',
+  speedAvg: '<path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4.5-5.5"/><path d="M3 21h18"/>',
 };
 const iconSvg = (id) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[id] || ""}</svg>`;
 const DEFAULT_SETTINGS = {
-  intWin: 16, glideWin: 10, glideMax: 60, wake: true, pilot: "", glider: "", terrRadius: 30, theme: "auto",
+  intWin: 16, glideWin: 10, glideMax: 60, avgWin: 10, wake: true, pilot: "", glider: "", terrRadius: 30, theme: "auto",
   pages: {
-    flug: { grid: "2x3", boxes: ["climb", "climbAvg", "altGps", "speed", "glide", "course"] },
+    gleiten: { grid: "2x3", boxes: ["climb", "climbAvg", "agl", "glide", "speedAvg", "recTime"] },
+    thermik: { grid: "2x4b", boxes: ["climb", "climbAvg", "altGps", "agl", "thermGain", "wind", "recTime"] },
     info: { grid: "2x3", boxes: ["agl", "gpsQual", "altMax", "recTime", "clock", "conn"] },
   },
 };
@@ -1244,7 +1315,7 @@ const FILL_ORDER = Object.keys(INSTRUMENTS);
 
 function normalizePage(p, def) {
   const grid = p && GRIDS[p.grid] ? p.grid : def.grid;
-  const n = GRIDS[grid][0] * GRIDS[grid][1];
+  const n = gridCount(grid);
   const src = p && Array.isArray(p.boxes) ? p.boxes : def.boxes;
   const boxes = [];
   for (let i = 0; i < n; i++) {
@@ -1260,16 +1331,248 @@ function normalizeSettings(s) {
     intWin: clampInt(s.intWin, 5, 120, d.intWin),
     glideWin: clampInt(s.glideWin, 5, 60, d.glideWin),
     glideMax: clampInt(s.glideMax, 5, 500, d.glideMax),
+    avgWin: clampInt(s.avgWin, 5, 120, d.avgWin),
     wake: s.wake === undefined ? d.wake : !!s.wake,
     pilot: typeof s.pilot === "string" ? s.pilot.slice(0, 60) : "",
     glider: typeof s.glider === "string" ? s.glider.slice(0, 60) : "",
     terrRadius: clampInt(s.terrRadius, 5, 100, d.terrRadius),
     theme: ["auto", "light", "dark"].includes(s.theme) ? s.theme : d.theme,
-    pages: { flug: normalizePage(s.pages && s.pages.flug, d.pages.flug), info: normalizePage(s.pages && s.pages.info, d.pages.info) },
+    // die frühere Seite "flug" wird nicht übernommen: Gleiten und Thermik starten mit den neuen Standardkästen
+    pages: Object.fromEntries(PAGE_IDS.map(pid => [pid, normalizePage(s.pages && s.pages[pid], d.pages[pid])])),
   };
 }
 let settings = (() => { try { return normalizeSettings(JSON.parse(lsGet(SET_KEY) || "null")); } catch (e) { return normalizeSettings(null); } })();
 function saveSettings() { lsSet(SET_KEY, JSON.stringify(settings)); }
+
+/* =====================================================================
+   WIND UND KREISERKENNUNG (Logik in kreisen.js und wind.js)
+   ===================================================================== */
+const KW_OK = typeof Kreisen !== "undefined" && typeof Wind !== "undefined";
+const WIND_KEY = "flugapp.wind.v1";   // {kreis: {...}, wind: {...}}, eigener Schlüssel → eigenes "Standard wiederherstellen"
+function loadWindSettings() {
+  if (!KW_OK) return { kreis: {}, wind: {}, seite: { autoWechsel: false } };
+  let s = null;
+  try { s = JSON.parse(lsGet(WIND_KEY) || "null"); } catch (e) { s = null; }
+  return { kreis: Kreisen.normalisiere(s && s.kreis), wind: Wind.normalisiere(s && s.wind), seite: Kreisen.normalisiereSeite(s && s.seite) };
+}
+let windSet = loadWindSettings();
+function saveWindSettings() { lsSet(WIND_KEY, JSON.stringify(windSet)); }
+
+// Fehler aus diesem Teil im Klartext zeigen, aber nicht bei jedem Messpunkt erneut (höchstens alle 10 s)
+let kwFehlerZeit = -1e12;
+function kwFehler(wo, e) {
+  const t = performance.now();
+  if (t - kwFehlerZeit < 10000) return;
+  kwFehlerZeit = t;
+  log("Wind/Kreiserkennung (" + wo + "): " + errText(e), "err");
+}
+if (!KW_OK) setTimeout(() => log("Wind und Kreiserkennung nicht verfügbar: kreisen.js oder wind.js wurde nicht geladen (offline ohne Cache?). Die übrige Anzeige funktioniert.", "err"), 0);
+
+/* Aktuelle Flugphase als globale, abonnierbare Variable – hier lässt sich später ein Seitenwechsel anhängen:
+     const ab = FlugPhase.abonnieren(p => { if (p.phase === "kreisen") … });   // ab() meldet wieder ab
+   Wert: {phase: "gleiten"|"kreisen" (Kreiserkennung), modus: "gleiten"|"thermik" (Phasenwahl, steuert den Seitenwechsel),
+          drehrichtung: "links"|"rechts"|null, anzahlKreise, beginnMs / thermikBeginnMs (Date.now()-Zeit) | null, grund} */
+const FlugPhase = (() => {
+  let wert = { phase: "gleiten", modus: "gleiten", drehrichtung: null, anzahlKreise: 0, beginnMs: null, thermikBeginnMs: null, grund: null };
+  const abos = new Set();
+  return {
+    get wert() { return wert; },
+    abonnieren(cb) { abos.add(cb); try { cb(wert); } catch (e) { kwFehler("FlugPhase-Abo", e); } return () => abos.delete(cb); },
+    _setzen(neu) {
+      wert = Object.freeze(Object.assign({}, wert, neu));
+      for (const cb of abos) { try { cb(wert); } catch (e) { kwFehler("FlugPhase-Abo", e); } }
+    },
+  };
+})();
+window.FlugPhase = FlugPhase;
+
+let kreisDet = null, windSch = null, phasenwahl = null;
+let kursEingefroren = null;           // Kurs vor dem Kreisen (für "Pfeil eingefroren")
+const kwLog = [];                     // letzte Ereignisse für Debug und Diagnose-Bericht
+function kwNotiz(text) { kwLog.push(new Date().toLocaleTimeString("de-CH", { hour12: false }) + " " + text); if (kwLog.length > 40) kwLog.shift(); }
+const perfZuDate = (tSek) => Date.now() - (performance.now() - tSek * 1000);   // Detektor-Zeit (s, performance) → Date.now()-Zeit
+
+function windFenster(fenster, quelle) {
+  try {
+    const r = windSch.verarbeite(fenster, quelle);
+    // Zusätzlich Wanduhr-Zeit merken: performance.now() kann auf iOS im Ruhezustand stehen bleiben
+    if (r && Number.isFinite(r.t)) r.tWand = Date.now() - (performance.now() / 1000 - r.t) * 1000;
+    if (!r) { kwNotiz("Windfenster verworfen: " + (fenster.grund || "nicht gültig")); return; }
+    kwNotiz(r.ok ? `Wind ${r.staerkeKmh.toFixed(1)} km/h aus ${Math.round(r.richtungVon)}° · Fluggeschw. ${r.fluggeschwKmh.toFixed(0)} km/h · ${r.qualitaet} (Lücke ${Math.round(r.groessteLuecke)}°, Rest ${(r.restfehler * 100).toFixed(1)} %, ${r.n} Punkte)`
+                 : "Wind verworfen (" + r.qualitaet + "): " + r.gruende.join(", "));
+  } catch (e) { kwFehler("Windschätzung", e); }
+}
+if (KW_OK) {
+  kreisDet = Kreisen.createKreisDetektor(windSet.kreis);
+  windSch = Wind.createWindSchaetzer(windSet.wind);
+  phasenwahl = Kreisen.createPhasenwahl(kreisDet, windSet.seite);
+  phasenwahl.on("fehler", (f) => kwFehler("Phasenwahl " + f.ereignis, f.fehler));
+  phasenwahl.on("modus", (m) => {
+    kwNotiz(m.modus === "thermik" ? `Seite Thermik (${m.grund}, ${(m.t - m.thermik.beginn).toFixed(0)} s nach Drehbeginn)`
+      : `Seite Gleiten (${m.grund})` + (m.letzteThermik && Number.isFinite(m.letzteThermik.hoeheEnde) && Number.isFinite(m.letzteThermik.hoeheBeginn)
+          ? `, Thermik ${Math.round(m.letzteThermik.hoeheEnde - m.letzteThermik.hoeheBeginn)} m in ${Core.fmtDuration((m.letzteThermik.ende - m.letzteThermik.beginn) * 1000)}` : ""));
+    FlugPhase._setzen({ modus: m.modus, thermikBeginnMs: m.thermik ? perfZuDate(m.thermik.beginn) : null });
+  });
+  kreisDet.on("fehler", (f) => kwFehler("Ereignis " + f.ereignis, f.fehler));
+  kreisDet.on("kreisBeginn", (b) => {
+    kursEingefroren = b.kursVorBeginn;
+    kwNotiz(`Kreisen ${b.richtung} erkannt (${b.verzoegerung.toFixed(0)} s nach Drehbeginn, ${Math.round(b.winkel)}°)`);
+  });
+  kreisDet.on("phasenwechsel", (p) => {
+    const z = kreisDet.getZustand();
+    FlugPhase._setzen({ phase: p.phase, drehrichtung: z.drehrichtung, anzahlKreise: z.anzahlKreise,
+                        beginnMs: p.phase === "kreisen" ? perfZuDate(z.beginn) : null, grund: p.grund || null });
+  });
+  kreisDet.on("vollkreis", (v) => { FlugPhase._setzen({ anzahlKreise: v.nummer }); windFenster(v.fenster, "vollkreis"); });
+  kreisDet.on("kreisEnde", (x) => {
+    kursEingefroren = null;
+    kwNotiz(`Kreisen Ende (${x.grund}): ${x.anzahlKreise} Kreise, ${Math.round(x.winkel)}°, ${x.dauer.toFixed(0)} s`);
+    windFenster(x.fenster, "kreisEnde");
+  });
+}
+// Jeder gültige RMC-Satz geht in die Kreiserkennung (mit der letzten GPS-Höhe, falls frisch)
+function kreisFuettern(tp, rmc) {
+  if (!kreisDet) return;
+  try {
+    const g = cur.gga, frisch = g && Core.ggaHasFix(g) && g.alt !== null && tp - tLast.gga <= STALE_MS;
+    kreisDet.update({ t: tp / 1000, kursGrad: rmc.course, geschwindigkeit: rmc.speedKn === null ? null : rmc.speedKn * Core.KN_TO_MS,
+                      lat: rmc.lat, lon: rmc.lon, hoehe: frisch ? g.alt : null });
+    phasenwahl.tick(tp / 1000, frisch ? g.alt : null);
+  } catch (e) { kwFehler("Kreiserkennung", e); }
+}
+function kreisTick(now) {
+  if (!kreisDet) return;
+  try { kreisDet.tick(now / 1000); phasenwahl.tick(now / 1000, null); } catch (e) { kwFehler("Kreiserkennung", e); }
+}
+
+/* Einstellungen: Tabelle → Eingabefelder. f = Faktor für die Anzeige (z. B. Anteil → %) */
+const WIND_FELDER = [
+  { h: "Automatischer Seitenwechsel" },
+  { g: "seite", k: "autoWechsel", t: "Seite beim Kreisen automatisch wechseln (Gleiten ↔ Thermik)", opts: [["true", "ein"], ["false", "aus (nur wischen)"]] },
+  { g: "seite", k: "eintritt", t: "Zur Thermik-Seite wechseln", opts: [["beginn", "sobald „Kreisen beginnt“ (früh)"], ["vollkreis", "erst nach dem ersten vollen Kreis"]] },
+  { g: "seite", k: "wechselHaltS", t: "Nach Wechsel der Drehrichtung Thermik halten (s)", step: 5 },
+  { g: "seite", k: "achterSperreS", t: "Nach Achtern nur mit vollem Kreis zur Thermik (s)", step: 10 },
+  { h: "Anzeige" },
+  { g: "wind", k: "pfeilKonvention", t: "Pfeil zeigt", opts: [["nach", "wohin der Wind weht"], ["von", "woher der Wind kommt"]] },
+  { g: "wind", k: "pfeilKreisen", t: "Pfeil beim Kreisen", opts: [["mitdrehen", "dreht mit (Bezug: aktueller Kurs)"], ["eingefroren", "eingefroren (Bezug: Kurs vor dem Kreisen)"], ["nord", "Nord oben (mit N-Markierung)"]] },
+  { g: "wind", k: "kursUnsicherKmh", t: "Kurs unsicher unter (km/h) – Pfeil abgedunkelt", step: 1 },
+  { g: "wind", k: "maxAlterMin", t: "Schätzung gilt höchstens (min)", step: 1 },
+  { g: "wind", k: "maxHoeheM", t: "… und bis zu einer Höhenänderung von (m)", step: 10 },
+  { g: "wind", k: "ausblendenMin", t: "Abgelaufen noch abgedunkelt zeigen (min)", step: 1 },
+  { h: "Kreiserkennung" },
+  { g: "kreis", k: "drehrateMin", t: "Drehrate mindestens (°/s)", step: 0.5 },
+  { g: "kreis", k: "beginnDauerS", t: "Beginn: Drehung hält mindestens an (s)", step: 0.5 },
+  { g: "kreis", k: "beginnWinkel", t: "Beginn: Kursänderung mindestens (°)", step: 10 },
+  { g: "kreis", k: "beginnToleranzS", t: "Beginn: kurz unter der Schwelle erlaubt (s)", step: 0.5 },
+  { g: "kreis", k: "endeHaltezeitS", t: "Ende nach so langer Zeit unter der Schwelle (s)", step: 1 },
+  { g: "kreis", k: "glaettungS", t: "Drehrate mitteln über (s)", step: 0.5 },
+  { g: "kreis", k: "windMinWinkel", t: "Kreisrest für den Wind mindestens (°)", step: 10 },
+  { g: "kreis", k: "minGeschwKmh", t: "Kurs unbrauchbar unter (km/h)", step: 1 },
+  { g: "kreis", k: "maxLueckeS", t: "Datenlücke ab (s)", step: 0.5 },
+  { h: "Windschätzung: Güte" },
+  { g: "wind", k: "lueckeGut", t: "Winkellücke „gut“ höchstens (°)", step: 5 },
+  { g: "wind", k: "lueckeMittel", t: "Winkellücke „mittel“ höchstens (°)", step: 5 },
+  { g: "wind", k: "restGut", t: "Restfehler „gut“ höchstens (%)", step: 0.5, f: 100 },
+  { g: "wind", k: "restMittel", t: "Restfehler „mittel“ höchstens (%)", step: 0.5, f: 100 },
+  { g: "wind", k: "minPunkteGut", t: "Messpunkte „gut“ mindestens", step: 1 },
+  { g: "wind", k: "minPunkteMittel", t: "Messpunkte „mittel“ mindestens", step: 1 },
+  { g: "wind", k: "minGeschwKmh", t: "Messpunkte verwerfen unter (km/h)", step: 1 },
+  { g: "wind", k: "fluggeschwMinKmh", t: "Fluggeschwindigkeit plausibel ab (km/h)", step: 1 },
+  { g: "wind", k: "fluggeschwMaxKmh", t: "Fluggeschwindigkeit plausibel bis (km/h)", step: 1 },
+];
+const runde = (x) => Math.round(x * 1000) / 1000;
+function buildWindSettingsUI() {
+  const host = $("cfg-wind");
+  if (!KW_OK) { host.innerHTML = '<div class="notice">kreisen.js oder wind.js nicht geladen – Einstellungen nicht verfügbar.</div>'; return; }
+  host.innerHTML = WIND_FELDER.map(d => {
+    if (d.h) return `<h3 class="hint" style="margin:14px 2px 4px;font-size:.95rem">${esc(d.h)}</h3>`;
+    const id = "ws-" + d.g + "-" + d.k, v = String(windSet[d.g][d.k]);
+    if (d.opts) return `<label class="hint" for="${id}">${esc(d.t)}</label><select id="${id}" data-wg="${d.g}" data-wk="${d.k}">`
+      + d.opts.map(([val, txt]) => `<option value="${val}"${val === v ? " selected" : ""}>${esc(txt)}</option>`).join("") + `</select>`;
+    const lim = (d.g === "kreis" ? Kreisen.GRENZEN : d.g === "seite" ? Kreisen.GRENZEN_SEITE : Wind.GRENZEN)[d.k], f = d.f || 1;
+    return `<div class="field"><span>${esc(d.t)} <small class="hint">(${runde(lim[0] * f)}–${runde(lim[1] * f)})</small></span>`
+      + `<input id="${id}" data-wg="${d.g}" data-wk="${d.k}" data-f="${f}" type="text" inputmode="decimal" autocomplete="off" value="${String(runde(Number(v) * f)).replace(".", ",")}"></div>`;
+  }).join("");
+}
+function applyWindSettings() {
+  if (!KW_OK) return;
+  kreisDet.setEinstellungen(windSet.kreis);
+  windSch.setEinstellungen(windSet.wind);
+  phasenwahl.setEinstellungen(windSet.seite);
+}
+$("cfg-wind").addEventListener("change", (e) => {
+  const t = e.target, g = t.dataset.wg, k = t.dataset.wk;
+  if (!g || !KW_OK) return;
+  e.stopPropagation();   // nicht an onSettingsChange (Seiten-Anordnung) weiterreichen
+  const neu = Object.assign({}, windSet[g]);
+  if (t.tagName === "SELECT") neu[k] = t.value === "true" ? true : t.value === "false" ? false : t.value;
+  else {   // Text mit Komma oder Punkt; leer oder unlesbar → bisheriger Wert bleibt
+    const z = Number(t.value.trim().replace(",", "."));
+    if (t.value.trim() !== "" && Number.isFinite(z)) neu[k] = z / Number(t.dataset.f || 1);
+  }
+  windSet[g] = g === "kreis" ? Kreisen.normalisiere(neu) : g === "seite" ? Kreisen.normalisiereSeite(neu) : Wind.normalisiere(neu);
+  saveWindSettings(); applyWindSettings(); buildWindSettingsUI();
+});
+$("btnWindDefaults").addEventListener("click", () => {
+  if (!KW_OK) return;
+  if (!confirm("Alle Einstellungen für Wind und Kreiserkennung auf Standard zurücksetzen?")) return;
+  windSet = { kreis: Kreisen.normalisiere(null), wind: Wind.normalisiere(null), seite: Kreisen.normalisiereSeite(null) };
+  saveWindSettings(); applyWindSettings(); buildWindSettingsUI();
+});
+
+/* Wind-Kachel: Werte für die Anzeige */
+function computeWind(now, noData) {
+  const DASH = "–", leer = { sichtbar: false, bezug: null, beschriftung: "", gedimmt: false };
+  if (!KW_OK) return { text: DASH, sub: "Modul nicht geladen", stale: false, tone: "bad", wind: leer };
+  const s = windSch.aktuell;
+  const g = cur.gga, hoehe = g && Core.ggaHasFix(g) && g.alt !== null && now - tLast.gga <= STALE_MS ? g.alt : null;
+  // Alter = das grössere aus Programmzeit und Wanduhr (nie einen alten Wert als aktuell zeigen)
+  const alterS = s ? Math.max(now / 1000 - s.t, Number.isFinite(s.tWand) ? (Date.now() - s.tWand) / 1000 : 0) : 0;
+  const gl = Wind.gueltigkeit(s, { t: s ? s.t + alterS : now / 1000, hoehe }, windSet.wind);
+  if (gl.zustand === "keine") return { text: DASH, sub: "noch keine Schätzung (erst nach einem Kreis)", stale: noData, wind: leer };
+  if (gl.zustand === "aus") return { text: DASH, sub: "keine gültige Schätzung (" + gl.grund + ")", stale: noData, wind: leer };
+  const r = cur.rmc, rmcOk = r && r.valid && now - tLast.rmc <= STALE_MS;
+  const z = kreisDet.getZustand();
+  const p = Wind.pfeil(s, { kurs: rmcOk ? r.course : null, geschwKmh: rmcOk && r.speedKn !== null ? r.speedKn * Core.KN_TO_KMH : null,
+                            phase: z.phase, kursEingefroren }, windSet.wind);
+  const alt = gl.zustand === "abgelaufen";
+  return { text: String(Math.round(s.staerkeKmh)), stale: noData, expired: alt,
+           sub: s.qualitaet + " · " + Wind.fmtAlter(gl.alterS) + (alt ? " · abgelaufen: " + gl.grund : ""), wind: p };
+}
+/* Höhengewinn in dieser Thermik: GPS-Höhe jetzt minus GPS-Höhe beim Andrehen in die Thermik (Phasenwahl) */
+function computeThermGain(now, noData) {
+  const DASH = "–";
+  if (!KW_OK) return { text: DASH, sub: "Modul nicht geladen", stale: false, tone: "bad" };
+  const z = phasenwahl.getZustand();
+  const g = cur.gga, alt = g && Core.ggaHasFix(g) && g.alt !== null && now - tLast.gga <= STALE_MS ? g.alt : null;
+  if (z.thermik) {
+    if (alt === null) return { text: DASH, sub: "keine GPS-Höhe", stale: true };
+    if (!Number.isFinite(z.thermik.hoeheBeginn)) return { text: DASH, sub: "Anfangshöhe unbekannt", stale: noData };
+    const gewinn = alt - z.thermik.hoeheBeginn, dauer = Math.max(1, now / 1000 - z.thermik.beginn);
+    const f = Core.fmtSigned(gewinn, 0), m = Core.fmtSigned(gewinn / dauer, 1);
+    return { text: f.text, tone: f.sign > 0 ? "pos" : f.sign < 0 ? "neg" : "", stale: noData,
+             sub: "seit " + Core.fmtDuration(dauer * 1000) + " · Ø " + m.text + " m/s" };
+  }
+  const l = z.letzteThermik;
+  if (l && Number.isFinite(l.hoeheEnde) && Number.isFinite(l.hoeheBeginn)) {
+    const d = l.hoeheEnde - l.hoeheBeginn, dauer = Math.max(1, l.ende - l.beginn);
+    return { text: DASH, stale: noData, sub: "letzte Thermik " + Core.fmtSigned(d, 0).text + " m · Ø " + Core.fmtSigned(d / dauer, 1).text + " m/s" };
+  }
+  return { text: DASH, sub: "nur in der Thermik", stale: noData };
+}
+function renderPhaseBar() {
+  if (!KW_OK) { setText("phaseMain", "Kreiserkennung nicht geladen"); return; }
+  const z = kreisDet.getZustand(), bar = $("phaseBar");
+  const kreisen = z.phase === "kreisen";
+  if (bar.className !== "phasebar" + (kreisen ? " kreisen" : "")) bar.className = "phasebar" + (kreisen ? " kreisen" : "");
+  setText("phaseMain", kreisen ? "Kreisen " + z.drehrichtung : "Gleiten");
+  let sub = "";
+  if (kreisen) sub = z.anzahlKreise + (z.anzahlKreise === 1 ? " Kreis" : " Kreise") + " · " + Core.fmtDuration(Math.max(0, z.dauer) * 1000);
+  else if (z.letzterKreis) sub = "letzter Kreis: " + z.letzterKreis.anzahlKreise + " Kreise, " + Core.fmtDuration(z.letzterKreis.dauer * 1000);
+  const pz = phasenwahl.getZustand();
+  sub += (sub ? " · " : "") + "Seite " + (pz.modus === "thermik" ? "Thermik" : "Gleiten") + (pz.wartetAufVollkreis ? " (wartet auf vollen Kreis)" : "");
+  setText("phaseSub", sub);
+}
 
 /* ---------- Instrumente berechnen ---------- */
 // Ergebnis: {text, sub, tone ("pos"|"neg"|"ok"|"warn"|"bad"|""), stale, unit?}
@@ -1344,14 +1647,24 @@ function computeInstrument(id, now, noData) {
       return { text: d.toLocaleTimeString("de-CH", { hour12: false }), sub: "Gerätezeit", stale: false };
     }
     case "recTime":
-      if (!rec.active) return { text: "–", sub: "keine Aufzeichnung", stale: false };
-      return { text: Core.fmtDuration(Date.now() - rec.session.start), sub: "Aufzeichnung läuft", stale: false, tone: "bad" };
+      if (!rec.active) return { text: "–", sub: "noch nicht gestartet", stale: false };
+      return { text: Core.fmtDuration(Date.now() - rec.session.start), sub: "seit „Flug starten“ · Aufzeichnung läuft", stale: false };
+    case "speedAvg": {
+      const r = Core.windowMean(speedBuf, now, settings.avgWin * 1000, HOLD_MS, MIN_COVERAGE);
+      const stale = noData || !freshOf("rmc", now);
+      if (!r.valid) return { text: DASH, sub: SUB_STATE[r.state] + " (" + settings.avgWin + " s)", stale };
+      return { text: String(Math.round(r.mean * 3.6)), sub: "Mittel " + settings.avgWin + " s", stale };
+    }
+    case "thermGain":
+      return computeThermGain(now, noData);
     case "conn": {
       const label = { none: "getrennt", connecting: "verbindet …", connected: "verbunden", disconnected: "getrennt" }[connState];
       const age = lastMsgAt ? ((now - lastMsgAt) / 1000).toFixed(1) + " s" : "–";
       const tone = connState === "connected" ? (noData ? "warn" : "ok") : connState === "connecting" ? "warn" : "bad";
       return { text: label, sub: lineRate(now).toFixed(1) + " Zeilen/s · Alter " + age, stale: false, tone };
     }
+    case "wind":
+      return computeWind(now, noData);
   }
   return { text: "?", sub: "", stale: false };
 }
@@ -1361,32 +1674,41 @@ function lineRate(now) {
 }
 
 /* ---------- Seiten aufbauen ---------- */
-const pageRefs = { flug: [], info: [] };
+const pageRefs = Object.fromEntries(PAGE_IDS.map(pid => [pid, []]));
 function buildInstrumentPage(pid) {
   const cfg = settings.pages[pid];
-  const [cols, rows] = GRIDS[cfg.grid];
+  const [cols, rows, breit] = GRIDS[cfg.grid];
   const grid = document.querySelector("#page-" + pid + " .igrid");
   grid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
   grid.style.gridTemplateRows = `repeat(${rows}, minmax(0, 1fr))`;
   grid.innerHTML = "";
-  pageRefs[pid] = cfg.boxes.map(id => {
+  pageRefs[pid] = cfg.boxes.map((id, i) => {
     const def = INSTRUMENTS[id];
     const el = document.createElement("div");
     el.className = "ibox" + (def.cls ? " " + def.cls : "") + (def.bar ? " hasbar" : "");
+    if (i < breit) el.style.gridColumn = "1 / -1";   // breiter Kasten über alle Spalten
     el.dataset.cat = def.cat || "";
+    // Wind: Einheit klein hinter der Zahl, daneben der Pfeil (oben im Bild = Bezugsrichtung, siehe Beschriftung darunter)
+    const windTeil = id === "wind" ? `<span class="wpf aus"><svg viewBox="-50 -50 100 100" aria-hidden="true">
+        <circle class="ring" r="44"/><line class="oben" x1="0" y1="-50" x2="0" y2="-38"/><text class="nmark" x="0" y="-31">N</text>
+        <g class="arr"><path d="M0 -30 L12 -8 L4 -8 L4 30 L-4 30 L-4 -8 L-12 -8 Z"/></g></svg><span class="wbz"></span></span>` : "";
     el.innerHTML = `<div class="lbl"><span class="ic">${iconSvg(id)}</span><span class="name"></span><span class="unit"></span></div>
       <span class="flag">Keine Daten</span>
-      <div class="val"><span class="num">–</span></div><div class="sub"></div>${def.bar ? '<div class="vbar"><i></i></div>' : ""}`;
+      <div class="val">${id === "wind" ? '<span class="nu"><span class="num">–</span><span class="u">km/h</span></span>' : '<span class="num">–</span>'}${windTeil}</div><div class="sub"></div>${def.bar ? '<div class="vbar"><i></i></div>' : ""}`;
     el.querySelector(".name").textContent = def.name;
     el.querySelector(".unit").textContent = def.unit;
     grid.appendChild(el);
     return { id, el, num: el.querySelector(".num"), sub: el.querySelector(".sub"), bar: el.querySelector(".vbar i"), ic: el.querySelector(".ic svg"),
-             base: el.className, last: "", lastLen: -1, lastCls: "", lastBar: "", lastRot: null };
+             wpf: el.querySelector(".wpf"), warr: el.querySelector(".wpf .arr"), wbz: el.querySelector(".wpf .wbz"),
+             base: el.className, last: "", lastLen: -1, lastCls: "", lastBar: "", lastRot: null, lastWCls: "", lastWRot: null };
   });
 }
 function fitText(el) {
   el.style.fontSize = "";
-  const avail = el.parentElement.clientWidth * 0.97;
+  // verfügbare Breite = Zeile minus Geschwister (Einheit und Pfeil der Wind-Kachel)
+  let others = 0;
+  for (const c of el.parentElement.children) if (c !== el) others += c.offsetWidth + 6;
+  const avail = (el.parentElement.clientWidth - others) * 0.97;
   const w = el.scrollWidth;
   if (w > avail && w > 0) {
     const fs = parseFloat(getComputedStyle(el).fontSize);
@@ -1402,7 +1724,18 @@ function renderInstrumentPage(pid, now, noData) {
       r.last = v.text;
     }
     if (r.sub.textContent !== (v.sub || "")) r.sub.textContent = v.sub || "";
-    const cls = r.base + (v.tone ? " t-" + v.tone : "") + (v.stale ? " stale" : "");
+    const cls = r.base + (v.tone ? " t-" + v.tone : "") + (v.stale ? " stale" : "") + (v.expired ? " wexp" : "") + (r.wpf && v.text === "–" ? " wleer" : "");
+    if (r.wpf && v.wind) {   // Wind-Pfeil
+      const w = v.wind;
+      const wcls = "wpf" + (w.sichtbar ? "" : " aus") + (w.gedimmt ? " dim" : "") + (w.bezug === "nord" ? " nord" : "");
+      if (wcls !== r.lastWCls) { r.wpf.setAttribute("class", wcls); r.lastWCls = wcls; }
+      const bz = w.sichtbar ? w.beschriftung + (w.gedimmt ? " (unsicher)" : "") : "";
+      if (r.wbz.textContent !== bz) r.wbz.textContent = bz;
+      if (w.sichtbar && w.winkel !== null && w.winkel !== r.lastWRot) {   // auf dem kürzeren Weg drehen (359° → 1° = +2°)
+        r.wRotAcc = r.lastWRot === null ? w.winkel : r.wRotAcc + ((w.winkel - r.lastWRot + 540) % 360) - 180;
+        r.warr.style.transform = "rotate(" + r.wRotAcc + "deg)"; r.lastWRot = w.winkel;
+      }
+    }
     if (cls !== r.lastCls) { r.el.className = cls; r.lastCls = cls; }
     if (r.bar) {   // Steigbalken: halbe Höhe = 5 m/s
       const h = Number.isFinite(v.bar) ? (Math.min(1, Math.abs(v.bar) / 5) * 50).toFixed(1) + "%" : "0%";
@@ -1447,6 +1780,20 @@ window.addEventListener("resize", () => { if (activeTab === "fly") { const sw = 
 document.querySelectorAll("#tabs button").forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab)));
 document.querySelectorAll("#ftabs button[data-fp]").forEach(b => b.addEventListener("click", () => goFlyPage(+b.dataset.fp)));
 $("btnMenu").addEventListener("click", () => showTab("start"));
+
+/* Automatischer Seitenwechsel Gleiten ↔ Thermik: nur beim Wechsel der Phase (Wischen bleibt bis zum nächsten Wechsel gültig).
+   Hängt an der globalen FlugPhase, wie ein späterer Abonnent es auch täte. */
+(() => {
+  let letzterModus = FlugPhase.wert.modus;
+  FlugPhase.abonnieren((p) => {
+    if (p.modus === letzterModus) return;
+    letzterModus = p.modus;
+    if (!windSet.seite || !windSet.seite.autoWechsel) return;
+    const ziel = PAGE_IDS.indexOf(p.modus === "thermik" ? "thermik" : "gleiten");
+    if (activeTab === "fly") { if (flyIndex !== ziel) goFlyPage(ziel); }
+    else flyIndex = ziel;   // beim Zurückkehren zur Fluganzeige auf der passenden Seite
+  });
+})();
 $("sbar").addEventListener("click", () => { if (activeTab !== "fly") showTab("start"); });
 
 /* ---------- Flug starten / beenden (startet und stoppt die Aufzeichnung) ---------- */
@@ -1455,7 +1802,7 @@ async function startFlight(resume) {
     if (!resume && connState !== "connected" && !confirm("Noch nicht mit dem Vario verbunden. Flug trotzdem starten?")) return;
     await recStart(resume || null);
   }
-  flyIndex = 0;
+  flyIndex = phasenwahl && phasenwahl.getZustand().modus === "thermik" ? 1 : 0;
   showTab("fly");
 }
 $("btnFlight").addEventListener("click", () => startFlight(null));
@@ -1490,12 +1837,13 @@ function render() {
   else if (rec.interrupted.length) { sbRec.textContent = "⚠ Aufz."; sbRec.className = "warn"; }
   else sbRec.textContent = "";
 
-  if (activeTab === "fly") { renderInstrumentPage("flug", now, noData); renderInstrumentPage("info", now, noData); }
+  kreisTick(now);   // Kreisende auch ohne neue Daten (Datenlücke) erkennen
+  if (activeTab === "fly") { for (const pid of PAGE_IDS) renderInstrumentPage(pid, now, noData); renderPhaseBar(); }
   if (activeTab === "start") renderStart(now, noData);
   if (activeTab === "debug") {
     const b = stats.bad;
     $("rawStats").textContent = `Zeilen ${stats.lines} · verworfen: Prüfsumme falsch ${b.bad}, ohne Prüfsumme ${b.nocs}, unlesbar ${b.format}`
-      + ` · GGA ${stats.types.gga} · RMC ${stats.types.rmc} · LXWP0 ${stats.types.lxwp0} · andere ${stats.types.other}`;
+      + ` · GGA ${stats.types.gga} · RMC ${stats.types.rmc} · LXWP0 ${stats.types.lxwp0}${stats.types.lxwpw ? " · LXWPW " + stats.types.lxwpw : ""} · andere ${stats.types.other}`;
     renderRecInfo();
     renderDebugSources(now);
     $("dbgWake").textContent = wakeState; $("dbgSw").textContent = swState; $("dbgVer").textContent = APP_VERSION;
@@ -1529,6 +1877,20 @@ function renderStart(now, noData) {
   setText("btnFlight", rec.active ? "Zur Fluganzeige" : "Flug starten");
   $("btnEndFlight").style.display = rec.active ? "" : "none";
 }
+function kwDebugKreis() {
+  if (!KW_OK) return "nicht geladen";
+  const z = kreisDet.getZustand(), st = kreisDet.statistik();
+  return (z.phase === "kreisen" ? "Kreisen " + z.drehrichtung + " · " + Math.round(z.winkel) + "° · " + z.anzahlKreise + " Kreise" : "Gleiten")
+    + " · Drehrate " + (z.drehrate === null ? "–" : z.drehrate.toFixed(1) + " °/s") + " · bisher " + st.kreisphasen + " Abschnitte, " + st.vollkreise + " Vollkreise"
+    + " · Seite " + phasenwahl.getZustand().modus + " (" + phasenwahl.getZustand().wechsel + " Wechsel)";
+}
+function kwDebugWind() {
+  if (!KW_OK) return "nicht geladen";
+  const st = windSch.statistik, a = windSch.aktuell, l = windSch.verlauf[windSch.verlauf.length - 1];
+  return "Fenster " + st.fenster + " (gut " + st.gut + ", mittel " + st.mittel + ", schlecht " + st.schlecht + ", nicht gültig " + st.nichtGueltig + ")"
+    + (a ? " · aktuell " + a.staerkeKmh.toFixed(1) + " km/h aus " + Math.round(a.richtungVon) + "°, Fluggeschw. " + a.fluggeschwKmh.toFixed(0) + " km/h" : "")
+    + (l && !l.ok ? " · zuletzt verworfen: " + l.gruende.join(", ") : "");
+}
 function renderDebugSources(now) {
   const age = (k) => tLast[k] > 0 ? ((now - tLast[k]) / 1000).toFixed(1) + " s" : "nie";
   const v = (x, suf) => x === null || x === undefined ? "–" : x + (suf || "");
@@ -1539,6 +1901,9 @@ function renderDebugSources(now) {
     ["RMC · GPS", r ? (r.valid ? "A (gültig)" : "V (ungültig)") + " · " + v(r.speedKn, " kn") + " · " + v(r.course, "°") : "–", age("rmc")],
     ["Gelände", terrainDebugText(), ""],
     ["Puffer", "Vario " + varioBuf.length + " · Geschw. " + speedBuf.length, ""],
+    ["Kreiserkennung", kwDebugKreis(), ""],
+    ["Windschätzung", kwDebugWind(), ""],
+    ...(stats.types.lxwpw ? [["LXWPW · Gerätewind", "Felder roh (Bedeutung nicht dokumentiert, nicht ausgewertet): " + (lastLxwpwRaw || "–"), ""]] : []),
     ["Zeilenrate", lineRate(now).toFixed(1) + " /s", ""],
   ];
   const html = rows.map(([k, val, a]) => `<span>${esc(k)}${a ? `<br><small class="hint">Alter ${esc(a)}</small>` : ""}</span><b>${esc(val)}</b>`).join("");
@@ -1552,24 +1917,26 @@ function buildSettingsUI() {
   $("setIntWin").value = settings.intWin;
   $("setGlideWin").value = settings.glideWin;
   $("setGlideMax").value = settings.glideMax;
+  $("setAvgWin").value = settings.avgWin;
   $("setWake").checked = settings.wake;
   $("setPilot").value = settings.pilot;
   $("setGlider").value = settings.glider;
   $("setTerrRadius").value = settings.terrRadius;
   $("setTheme").value = settings.theme;
   $("appVer").textContent = APP_VERSION;
-  for (const pid of ["flug", "info"]) {
+  for (const pid of PAGE_IDS) {
     const host = $("cfg-" + pid);
     const cfg = settings.pages[pid];
     const gridOpts = Object.keys(GRIDS).map(g => {
-      const [c, r] = GRIDS[g];
-      return `<option value="${g}"${g === cfg.grid ? " selected" : ""}>${c} × ${r} (${c} Spalte${c > 1 ? "n" : ""}, ${r} Zeile${r > 1 ? "n" : ""})</option>`;
+      const [c, r, b] = GRIDS[g];
+      const txt = b ? `${c} × ${r}, oberster Kasten breit (${gridCount(g)} Kästen)` : `${c} × ${r} (${c} Spalte${c > 1 ? "n" : ""}, ${r} Zeile${r > 1 ? "n" : ""})`;
+      return `<option value="${g}"${g === cfg.grid ? " selected" : ""}>${txt}</option>`;
     }).join("");
     const instOpts = (sel) => Object.keys(INSTRUMENTS).map(k => `<option value="${k}"${k === sel ? " selected" : ""}>${esc(INSTRUMENTS[k].long)}</option>`).join("");
     const [cols] = GRIDS[cfg.grid];
     host.innerHTML = `<label class="hint">Raster (Spalten × Zeilen)</label><select data-grid="${pid}">${gridOpts}</select>
-      <div class="boxsel">${cfg.boxes.map((id, i) => `<div><label>Kasten ${i + 1} (Zeile ${Math.floor(i / cols) + 1}, Spalte ${i % cols + 1})</label>
-      <select data-box="${pid}" data-i="${i}">${instOpts(id)}</select></div>`).join("")}</div>`;
+      <div class="boxsel">${cfg.boxes.map((id, i) => { const ps = boxPos(cfg.grid, i); return `<div><label>Kasten ${i + 1} (Zeile ${ps.zeile}${ps.spalte ? ", Spalte " + ps.spalte : ", ganze Breite"})</label>
+      <select data-box="${pid}" data-i="${i}">${instOpts(id)}</select></div>`; }).join("")}</div>`;
   }
 }
 function onSettingsChange(e) {
@@ -1594,6 +1961,7 @@ function bindNumber(id, key, lo, hi) {
 bindNumber("setIntWin", "intWin", 5, 120);
 bindNumber("setGlideWin", "glideWin", 5, 60);
 bindNumber("setGlideMax", "glideMax", 5, 500);
+bindNumber("setAvgWin", "avgWin", 5, 120);
 bindNumber("setTerrRadius", "terrRadius", 5, 100);
 $("setWake").addEventListener("change", () => { settings.wake = $("setWake").checked; saveSettings(); settings.wake ? requestWakeLock() : releaseWakeLock(); });
 $("setPilot").addEventListener("change", () => { settings.pilot = $("setPilot").value.slice(0, 60); saveSettings(); });
@@ -1602,7 +1970,7 @@ $("btnDefaults").addEventListener("click", () => {
   if (!confirm("Alle Anzeige- und Berechnungs-Einstellungen auf Standard zurücksetzen?")) return;
   const keep = { pilot: settings.pilot, glider: settings.glider };
   settings = normalizeSettings(Object.assign(JSON.parse(JSON.stringify(DEFAULT_SETTINGS)), keep));
-  saveSettings(); buildSettingsUI(); buildInstrumentPage("flug"); buildInstrumentPage("info"); applyTheme();
+  saveSettings(); buildSettingsUI(); for (const pid of PAGE_IDS) buildInstrumentPage(pid); applyTheme();
 });
 $("btnResetMax").addEventListener("click", () => { maxAlt = null; });
 
@@ -2149,9 +2517,9 @@ window.addEventListener("error", (e) => log("JS-Fehler: " + e.message + " (" + (
 window.addEventListener("unhandledrejection", (e) => log("Unbehandelter Fehler: " + errText(e.reason), "err"));
 
 /* ---------- Start ---------- */
-buildInstrumentPage("flug");
-buildInstrumentPage("info");
+for (const pid of PAGE_IDS) buildInstrumentPage(pid);
 buildSettingsUI();
+buildWindSettingsUI();
 showTab(activeTab);
 detectInterrupted();
 checkOffline();
@@ -2290,7 +2658,10 @@ function buildDiagReport() {
   kv("Pakete/s (5 s)", (rateWindow.length / 5).toFixed(1));
   kv("Zeilen · Zeilen/s", stats.lines + " · " + lineRate(now).toFixed(1));
   kv("Verworfen", "Prüfsumme falsch " + stats.bad.bad + " · ohne Prüfsumme " + stats.bad.nocs + " · unlesbar " + stats.bad.format);
-  kv("Satzarten", "GGA " + stats.types.gga + " · RMC " + stats.types.rmc + " · LXWP0 " + stats.types.lxwp0 + " · andere " + stats.types.other);
+  kv("Satzarten", "GGA " + stats.types.gga + " · RMC " + stats.types.rmc + " · LXWP0 " + stats.types.lxwp0 + " · LXWPW " + stats.types.lxwpw + " · andere " + stats.types.other);
+  kv("Kreiserkennung", kwDebugKreis());
+  kv("Windschätzung", kwDebugWind());
+  for (const x of kwLog.slice(-15)) L.push("  " + x);
   kv("Lücken > 1 s · > 2 s · > 5 s", diag.gaps.join(" · ") + " · längste " + (diag.maxGap / 1000).toFixed(2) + " s" + (diag.maxGapAt ? " um " + diag.maxGapAt : ""));
   for (const [key, c] of diag.chars) {
     L.push("Characteristic " + key);
