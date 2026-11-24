@@ -259,13 +259,9 @@
     <div id="recInterrupted" style="margin-top:12px"></div>
     <button id="btnFlight" class="big go">Flug starten</button>
     <button id="btnEndFlight" class="big danger" style="display:none">Flug beenden</button>
-    <div class="hint" style="margin-top:6px">„Flug starten“ öffnet die Fluganzeige (Seiten „Flug“ und „Info“, seitlich wischen zum Wechseln) und startet automatisch die Aufzeichnung.</div>
-    <div class="notice" style="margin-top:14px">Eigenbau ohne Zulassung – nur Ergänzung zum Hauptinstrument.</div>
   </section>
 
   <section class="page scroll" id="page-einst">
-    <div class="notice"><b>Hinweis:</b> Eigenbau ohne Zulassung. Diese Anzeige ist nur eine Ergänzung zu einem Hauptinstrument und ersetzt es nicht.</div>
-
     <h2>Berechnung</h2>
     <div class="field"><span>Fenster integriertes Steigen (5–120 s)</span><input id="setIntWin" type="number" inputmode="numeric" min="5" max="120" step="1"></div>
     <div class="field"><span>Fenster Gleitzahl (5–60 s)</span><input id="setGlideWin" type="number" inputmode="numeric" min="5" max="60" step="1"></div>
@@ -273,7 +269,6 @@
     <div class="field"><span>Fenster Ø Geschwindigkeit (5–120 s)</span><input id="setAvgWin" type="number" inputmode="numeric" min="5" max="120" step="1"></div>
 
     <h2>Wind und Kreiserkennung</h2>
-    <div class="hint">Der Wind wird beim Kreisen aus der Bewegung über Grund geschätzt (keine Fluggeschwindigkeits-Messung). Nur eine Näherung, nicht geprüft gegen einen gemessenen Wind. Die Startwerte sind an eigenen Flügen (iPhone-GPS, 1 Hz) gewählt und müssen mit dem Vario noch justiert werden.</div>
     <div id="cfg-wind"></div>
     <button class="secondary" id="btnWindDefaults">Wind und Kreiserkennung: Standard wiederherstellen</button>
 
@@ -311,9 +306,6 @@
       <button class="secondary" id="btnTerrStop" disabled>Abbrechen</button>
     </div>
     <button class="danger" id="btnTerrClear">Offline-Geländedaten löschen</button>
-    <div class="hint" style="margin-top:6px">„Höhe über Grund“ = GPS-Höhe über Meer minus Geländehöhe an der aktuellen Position (Raster 25 m, Schweiz mit ca. 10 km Rand).
-      Mit Netz lädt die App die Kacheln um die Position während des Flugs selbst nach. Ohne Netz geht es nur mit vorher gespeichertem Gebiet, deshalb vor dem Flug „Gebiet offline speichern“ (30 km Radius ≈ 12 MB, 50 km ≈ 30 MB, 100 km ≈ 106 MB).</div>
-    <div class="notice" style="margin-top:8px">Näherung: Das Geländemodell enthält keine Bäume, Gebäude, Leitungen oder Seilbahnen, und die GPS-Höhe schwankt um mehrere Meter. Nicht als einziges Mittel für den Bodenabstand verwenden.</div>
     <div class="hint" style="margin-top:6px">Quelle Geländedaten: Bundesamt für Landestopografie swisstopo (swissALTIRegio)</div>
 
     <h2>Offline</h2>
@@ -339,7 +331,6 @@
     <label class="chk"><input type="checkbox" id="autoReconnect" checked> Nach Abbruch automatisch neu verbinden</label>
 
     <h2>Diagnose-Bericht</h2>
-    <div class="hint">Fasst alles Wichtige zur Bluetooth-Verbindung und Datenübertragung zusammen: Schnittstelle, Verbindungsversuche mit Dauer, Fehler, Abbrüche, Datenlücken, Statistik pro Characteristic und die letzten Rohdaten. Enthält die zuletzt empfangene GPS-Position, aber nicht Pilot- und Schirmname.</div>
     <div class="row">
       <button id="btnDiagCopy">Bericht kopieren</button>
       <button class="secondary" id="btnDiagShare">Teilen</button>
@@ -368,7 +359,6 @@
         <span>Speicher</span><b id="recDb">–</b>
       </div>
     </div>
-    <div class="notice">IGC-Export: <b>nicht signiert, nicht für Wettbewerbe</b>. Die Datei hat keinen gültigen G-Record (Sicherheits-Signatur) und ist im Kopf entsprechend gekennzeichnet.</div>
     <div class="field"><span>Pilot (IGC-Kopf)</span><input id="setPilot" style="width:55%" autocomplete="off"></div>
     <div class="field"><span>Gleitschirm (IGC-Kopf)</span><input id="setGlider" style="width:55%" autocomplete="off"></div>
     <label class="chk"><input type="checkbox" id="exportAsText"> Export im Textfeld anzeigen (zum Kopieren, falls Download/Teilen nicht geht)</label>
