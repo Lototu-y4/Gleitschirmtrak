@@ -13,9 +13,11 @@ Online: <https://lototu-y4.github.io/Gleitschirmtrak/>
   - Während des Flugs stehen hier „Zur Fluganzeige“ und „Flug beenden“.
   - Ein unterbrochener Flug (z. B. nach einem Neuladen) wird hier zum Fortsetzen angeboten.
 - **Fluganzeige:**
-  - Seiten „Flug“ und „Info“, durch seitliches Wischen oder über die Reiter unten zu wechseln.
+  - Seiten „Gleiten“, „Thermik“ und „Info“, durch seitliches Wischen oder über die Reiter unten zu wechseln.
+  - Beim Kreisen wechselt die Anzeige automatisch auf „Thermik“ und danach zurück auf „Gleiten“ (siehe „Automatischer Seitenwechsel“). Wischen geht jederzeit und gilt bis zum nächsten automatischen Wechsel.
+  - Die Seite „Info“ zeigt oben die Flugphase („Gleiten“, „Kreisen links/rechts“ mit Anzahl Kreise) und welche Seite die Automatik gerade wählt.
   - „Menü“ führt zurück zur Startseite, der Flug läuft dabei weiter.
-- **Einstellungen:** Berechnungsfenster, Anordnung der Kästen, Darstellung (automatisch, hell oder dunkel), Wake Lock, Geländedaten offline speichern, Offline-Cache.
+- **Einstellungen:** Berechnungsfenster, Wind und Kreiserkennung (mit eigenem „Standard wiederherstellen“), Anordnung der Kästen, Darstellung (automatisch, hell oder dunkel), Wake Lock, Geländedaten offline speichern, Offline-Cache.
 - **Debug:**
   - Ausführlicher Verbindungsstatus, Datenquellen und Rohdaten
   - Gespeicherte Aufzeichnungen mit Export als .txt und .igc
@@ -28,7 +30,12 @@ Online: <https://lototu-y4.github.io/Gleitschirmtrak/>
 | `index.html` | die ganze App (HTML, CSS, JavaScript), ohne Frameworks |
 | `sw.js` | Service Worker: Offline-Cache, „Netz zuerst, Cache als Rückfall“ |
 | `manifest.webmanifest` | Web-App-Manifest |
+| `kreisen.js` | Kreiserkennung (Zustandsmaschine, ohne Abhängigkeiten, auch in Node lauffähig) |
+| `wind.js` | Windschätzung aus Kreisen, Güte, Gültigkeit, Pfeilwinkel (ohne Abhängigkeiten) |
 | `tests/core.test.js` | Tests für Parser, Prüfsumme, Berechnungen, IGC-Export und Geländeabfrage |
+| `tests/kreisen.test.js`, `tests/phasenwahl.test.js`, `tests/wind.test.js`, `tests/sim.js` | Tests der Kreiserkennung, des Seitenwechsels und der Windschätzung mit simulierten Flügen |
+| `tests/igc.test.js`, `werkzeuge/igc.js` | IGC-Dateien lesen (B-Records, I-Record-Erweiterungen) |
+| `werkzeuge/auswertung.js` | lässt Kreiserkennung und Windschätzung über eigene IGC-Flüge laufen und schreibt einen Bericht mit Grafiken |
 | `terrain/` | Geländekacheln für „Höhe über Grund“ (`index.json` + `tiles/*.u16.gz`, 1140 Kacheln, ~220 MB), Kopie von `agl-terrain/output/tiles_25m/` |
 | `agl-terrain/` | Werkzeug, das die Kacheln aus swisstopo-Daten erzeugt und prüft (eigene README) |
 
@@ -37,6 +44,7 @@ Online: <https://lototu-y4.github.io/Gleitschirmtrak/>
 - `$GPGGA`: Position, GPS-Höhe (über Meer), Satelliten, HDOP, Fix-Qualität
 - `$GPRMC`: Geschwindigkeit (Knoten → km/h), Kurs über Grund, Datum/Zeit, Status A/V
 - `$LXWP0`: Vario in m/s (Feldbedeutung nach dem XCTracer-Parser von XCSoar). Die Barometerhöhe wird nicht angezeigt. Sie bleibt im Rohlog und geht als Druckhöhe (ISA) in die IGC-Datei.
+- `$LXWPW`: Laut Handbuch des XC Tracer Mini V „the same as LXWP0, but with the information of the calculated wind“. Eine Feldbeschreibung (Reihenfolge, Einheit, „woher“ oder „wohin“) gibt es nicht. Die App liest daraus deshalb nur Vario und Baro wie bei LXWP0. Die Windfelder zeigt sie roh auf der Debug-Seite, deutet sie aber nicht.
 - Zeilen mit falscher oder fehlender Prüfsumme werden verworfen und gezählt (Seite „Rohdaten“).
 
 ## Berechnungen
@@ -45,11 +53,113 @@ Online: <https://lototu-y4.github.io/Gleitschirmtrak/>
 - **Gleitzahl über Grund:** mittlere Geschwindigkeit über Grund geteilt durch das mittlere Sinken im Fenster (Standard 10 s, 5–60 s).
   Beim Steigen ist das Ergebnis negativ.
   Ein Strich erscheint, wenn der Betrag über der Schwelle liegt (Standard 60), das Fenster noch nicht gefüllt ist oder Daten fehlen.
+- **Ø Geschwindigkeit über Grund:** zeitgewichteter Mittelwert der GPS-Geschwindigkeit über ein gleitendes Fenster (Standard 10 s, 5–120 s).
+- **Höhengewinn in dieser Thermik:** GPS-Höhe jetzt minus GPS-Höhe beim Andrehen in die Thermik. Die Thermik beginnt mit der Drehung, die zum Wechsel auf „Thermik“ geführt hat, und bleibt über einen Wechsel der Drehrichtung im Bart hinweg dieselbe. Darunter stehen Dauer und mittleres Steigen. Ausserhalb der Thermik zeigt der Kasten einen Strich und darunter das Ergebnis der letzten Thermik.
+- **Zeit seit Start:** Zeit seit „Flug starten“ (gleich lang wie die Aufzeichnung).
 - **Regeln für alle Fenster:**
   - Jeder Messwert gilt bis zum nächsten, höchstens aber 2 s.
   - Längere Lücken zählen nicht mit.
   - Ein Fenster gilt erst als gefüllt, wenn es zu mindestens 90 % abgedeckt ist.
 - Kommen mehr als 2 s keine Daten, werden die Werte abgedunkelt und mit „Keine Daten“ markiert.
+
+## Wind und Kreiserkennung
+
+**Nur eine Schätzung, gegen keinen gemessenen Wind geprüft.** Das Vario liefert keine Fluggeschwindigkeit (das Feld im LXWP0 ist leer). Der Wind wird darum aus der Bewegung über Grund beim Kreisen geschätzt.
+
+### Kreiserkennung (`kreisen.js`)
+
+- **Eingang:** jeder gültige `$GPRMC` (Kurs über Grund, Geschwindigkeit) mit der letzten GPS-Höhe.
+- **Drehrate:** Kursänderung, über 2 s gemittelt. Der Sprung 359° → 1° zählt als +2°. Unter 5 km/h über Grund ist der Kurs unbrauchbar.
+- **Stufe 1, „Kreisen beginnt“:**
+  - Die Drehrate liegt mindestens 4 s lang über 8 °/s in gleicher Richtung (kurze Einbrüche bis 2 s sind erlaubt).
+  - **und** der Kurs hat sich dabei um mindestens **250°** geändert.
+  - Erst der Winkel trennt Thermikkreise von Wenden im Hangflug. Bei 20 °/s meldet die Erkennung nach etwa 14 s, also nach rund 80 % eines Kreises (siehe Auswertung unten).
+- **Ende:** wenn die Drehrate 8 s lang nicht mehr in Kreisrichtung über der Schwelle liegt (Hysterese), oder sofort, wenn 4 s lang anhaltend in die Gegenrichtung gedreht wird (Achter).
+- **Stufe 2, Fenster für den Wind:**
+  - Jede volle 360°-Drehung löst `vollkreis` aus, mit genau diesen 360° als Fenster.
+  - Beim Ende liefert `kreisEnde` den Rest seit dem letzten Vollkreis. Er gilt für den Wind, wenn er mindestens 270° umfasst und weder mit einem Richtungswechsel begonnen noch geendet hat.
+- **Schnittstelle:** `Kreisen.createKreisDetektor(einstellungen)` mit
+  - `update({t, kursGrad, geschwindigkeit, lat, lon, hoehe})` (t in s, Geschwindigkeit in m/s), `tick(t)` (Zeit ohne Daten, für Datenlücken), `getZustand()`, `on(name, cb)` (gibt die Abmeldefunktion zurück), `off`, `setEinstellungen`, `statistik()`.
+  - Ereignisse: `kreisBeginn`, `kreisEnde` (mit allen Messpunkten und dem Windfenster), `vollkreis`, `phasenwechsel`, `fehler`.
+- **Globale Phase:** `FlugPhase.wert` und `FlugPhase.abonnieren(cb)` in `index.html`, mit `phase` (Kreiserkennung) und `modus` (Thermik/Gleiten aus der Phasenwahl). Der automatische Seitenwechsel hängt selbst an diesem Abonnement.
+
+### Automatischer Seitenwechsel (`Kreisen.createPhasenwahl`)
+
+Die Phasenwahl entscheidet aus den Ereignissen der Kreiserkennung zwischen „thermik“ und „gleiten“. Die App wechselt nur im Moment eines solchen Wechsels die Seite. Wer dazwischen wischt, bleibt auf seiner Seite, bis die Phase das nächste Mal wechselt.
+
+- **Gleiten → Thermik:** sobald „Kreisen beginnt“ (250° in eine Richtung, siehe oben). Ausnahmen:
+  - Die Drehung entstand aus einem Richtungswechsel, oder in den letzten 120 s gab es ein Achter-Muster. Dann erst beim ersten vollen Kreis (360°).
+  - Einstellung „erst nach dem ersten vollen Kreis“: immer erst bei 360°.
+- **Thermik → Gleiten:** sobald das Kreisen endet. Die Kreiserkennung hat da schon 8 s Geradeausflug abgewartet.
+- **Wechsel der Drehrichtung im Bart:**
+  - Die Thermik bleibt bis zu 30 s erhalten, bis in der neuen Richtung ein voller Kreis gelingt.
+  - Kommt stattdessen ein weiterer Richtungswechsel oder läuft die Zeit ab, war es ein Achter (Soaring): zurück auf Gleiten und 120 s Achter-Sperre.
+  - Geht es nach dem Richtungswechsel geradeaus weiter, wechselt die Anzeige wie bei einem normalen Kreisende nach 8 s.
+- **Bleibt „Gleiten“:** Geradeaus steigen (Hangaufwind), S-Kurven, Hangwenden und lange Achter ohne volle Kreise.
+- **Einstellungen** (unter „Wind und Kreiserkennung“): Automatik ein/aus, Eintritt früh oder erst nach vollem Kreis, Haltezeit nach Richtungswechsel, Achter-Sperre.
+- **Standardseiten:**
+  - Gleiten: Steigen, integriertes Steigen, Höhe über Grund, Gleitzahl über Grund, Ø Geschwindigkeit, Zeit seit Start.
+  - Thermik: Raster „2 × 4, oberster Kasten breit“ mit Steigen (breit), integriertes Steigen, GPS-Höhe, Höhe über Grund, Höhengewinn Thermik, Wind, Zeit seit Start.
+  - Alle Kästen bleiben in den Einstellungen frei wählbar.
+  - Die frühere Seite „Flug“ wird nicht übernommen; „Gleiten“ und „Thermik“ beginnen mit diesen Standardkästen.
+
+### Windschätzung (`wind.js`)
+
+- **Prinzip:** Beim Kreisen mit etwa gleicher Fahrt liegen die Geschwindigkeitsvektoren über Grund (Ost/Nord) auf einem Kreis. Der Mittelpunkt ist der Wind, der Radius die Fluggeschwindigkeit.
+- **Anpassung:**
+  - Ein Vorfilter wirft grobe Ausreisser weg.
+  - Dann folgt ein algebraischer Kreis nach Taubin, bis zu dreimal ohne Ausreisser neu angepasst (3 robuste σ).
+  - Zum Schluss wird der Kreis geometrisch verfeinert (Gauss-Newton).
+  - Messpunkte unter 5 km/h über Grund werden verworfen.
+- **Ergebnis:**
+  - Windvektor, Stärke (km/h), `richtungVon` (woher) und `richtungNach` (wohin)
+  - Fluggeschwindigkeit (Radius), Punktzahl, grösste Winkellücke um den Mittelpunkt
+  - Restfehler (Streuung des Abstands zum Kreis relativ zum Radius), Zeit und mittlere GPS-Höhe
+- **Güte:** Die schlechteste der drei Stufen zählt. Bei „schlecht“ wird kein Wert angezeigt.
+
+  | | gut | mittel | sonst |
+  |---|---|---|---|
+  | grösste Winkellücke | ≤ 60° | ≤ 90° | schlecht |
+  | Restfehler | ≤ 8 % | ≤ 15 % | schlecht |
+  | Messpunkte | ≥ 16 | ≥ 10 | schlecht |
+
+  Ausserdem gilt eine Fluggeschwindigkeit ausserhalb von 15–70 km/h als schlecht.
+  Die Grenzen sind an den eigenen Flügen gewählt. Mit grösserem Restfehler oder grösserer Lücke streuen aufeinanderfolgende Schätzungen im selben Aufwind deutlich mehr.
+- **Gültigkeit:**
+  - Eine Schätzung gilt 10 min und bis zu 300 m GPS-Höhenänderung.
+  - Danach wird sie abgedunkelt und mit Alter und Grund markiert.
+  - Ganz ausgeblendet wird sie nach weiteren 10 min oder ab der doppelten Höhenänderung (600 m).
+- **Berechnet, aber nicht angezeigt:** Gegen-/Rückenwind, Seitenwind (`windKomponenten`) und die Fluggeschwindigkeit im Geradeausflug (`fluggeschwindigkeit`).
+
+### Anzeige: Kachel „Wind“
+
+- **Zahl:** Windstärke in km/h. Darunter stehen Güte und Alter („gut · vor 3 min“).
+- **Pfeil:**
+  - Oben im Pfeilbild ist die Flugrichtung (Kurs über Grund).
+  - Standardmässig zeigt er, **wohin** der Wind weht: Gegenwind nach unten, Rückenwind nach oben, Wind von links nach rechts.
+  - Pfeilwinkel = Richtung, in die der Wind weht, minus Kurs, auf 0–360 gebracht (`Wind.windPfeilWinkel`).
+  - Einstellbar ist, dass der Pfeil stattdessen zeigt, **woher** der Wind kommt.
+- **Beim Kreisen:** Der Pfeil dreht mit (Standard), bleibt auf dem Kurs vor dem Kreisen eingefroren, oder zeigt Nord oben mit N-Markierung.
+  Unter dem Pfeil steht, was gerade oben ist: „↑ Kurs“, „↑ Kurs vor Kreis“ oder „↑ Nord“.
+- **Unsicherer Kurs:** Unter 8 km/h über Grund wird der Pfeil abgedunkelt („unsicher“), die Zahl bleibt.
+- **Bekannte Grenze:** Ist der Wind so stark wie die Fluggeschwindigkeit oder stärker, dreht der Kurs über Grund nicht mehr ganz herum. Dann erkennt die Kreiserkennung keine Kreise, und es gibt keine neue Schätzung. Die Anpassung selbst käme mit solchen Daten zurecht (siehe Tests).
+
+### Auswertung eigener Flüge
+
+```
+node werkzeuge/auswertung.js flugdaten/igc flugdaten/auswertung
+```
+
+- **Ausgabe:** `bericht.html` mit Kreisabschnitten, Windtabelle, Wind über die Höhe und je einer Grafik pro Flug.
+- **Datenschutz:** `flugdaten/` steht in `.gitignore`, weil die IGC-Dateien Name und Positionen enthalten.
+- **Ergebnis an 18 eigenen Flügen** (iPhone-GPS 1 Hz, nicht das Vario):
+  - 499 Kreisabschnitte, davon 89 unter 360° (52 davon mit Sinken, also wohl Wenden).
+  - 77 % der Steigzeit lag in erkannten Kreisabschnitten.
+  - Aufeinanderfolgende Windschätzungen im selben Aufwind unterscheiden sich im Median um 3 km/h.
+  - Seitenwechsel: 436-mal „Thermik“ (13,5 pro Flugstunde, 40 % der Flugzeit), Wechsel im Median 13 s nach Drehbeginn.
+    - Steigende Thermiken (≥ 2 Kreise) lagen zu 93 % der Kreiszeit auf der Thermik-Seite. Der Rest ist die Zeit bis zur Erkennung.
+    - Steigen ohne Kreisen (Hang, Soaring) lag nur zu 4 % auf der Thermik-Seite.
+    - 45 Episoden ohne vollen Kreis (einzelne Drehungen ab 250°). 132 mit Höhenverlust, meist 0–1 Kreise und höchstens 20 m, also Probierkreise in schwachem Steigen; 16 davon kurz vor der Landung.
 
 ## Höhe über Grund (AGL)
 
@@ -71,8 +181,10 @@ Online: <https://lototu-y4.github.io/Gleitschirmtrak/>
 ## Tests
 
 ```
-node --test tests/core.test.js
+node --test tests/*.test.js
 ```
+
+Die Tests der Kreiserkennung und Windschätzung schreiben erreichte Genauigkeiten und Erkennungszeiten als Diagnosezeilen (`ℹ`) in die Ausgabe.
 
 Die Tests laden die reinen Funktionen direkt aus `index.html`, aus dem Block zwischen `/*CORE-BEGIN*/` und `/*CORE-END*/`.
 Der Gelände-Test vergleicht mit Werten aus `agl-terrain/scripts/agl/terrain.py` an echten Kacheln. Fehlt `terrain/`, wird er übersprungen.

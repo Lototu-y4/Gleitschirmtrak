@@ -319,3 +319,13 @@ test("Gelände: echte swisstopo-Kacheln = Python-Referenz", { skip: !haveTerrain
   // Gardasee liegt ausserhalb → keine Kachel
   assert.equal(Core.terrainLocate(grid, 45.65, 10.7).key in index.kacheln, false);
 });
+
+/* ---------------- LXWPW (XC Tracer mit Wind) ---------------- */
+test("LXWPW: Vario und Baro wie LXWP0, Windfelder nur roh (Bedeutung nicht dokumentiert)", () => {
+  const p = Core.parseSentence(nmea("LXWPW,N,,119.9,0.16,,,,,,259,12,34"));
+  assert.equal(p.ok, true);
+  assert.equal(p.type, "lxwpw");
+  near(p.data.vario, 0.16); near(p.data.baroAlt, 119.9);
+  assert.equal(p.rawFields.join(","), "259,12,34");
+  assert.equal(Core.parseSentence(nmea("LXWPW,N")).ok, false);
+});
