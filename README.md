@@ -18,7 +18,13 @@ Online: <https://lototu-y4.github.io/Gleitschirmtrak/>
   - Beim Kreisen wechselt die Anzeige automatisch auf „Thermik“ und danach zurück auf die Seite davor, also z. B. „Gleiten“ oder „Karte“ (siehe „Automatischer Seitenwechsel“). Wischen geht jederzeit und gilt bis zum nächsten automatischen Wechsel.
   - Die Seite „Info“ zeigt oben die Flugphase („Gleiten“, „Kreisen links/rechts“ mit Anzahl Kreise) und welche Seite die Automatik gerade wählt.
   - „Menü“ führt zurück zur Startseite, der Flug läuft dabei weiter.
-- **Einstellungen:** Berechnungsfenster, Wind und Kreiserkennung, Start und Landung (je mit eigenem „Standard wiederherstellen“), Anordnung der Kästen, Karte und Ziel (Wegpunkte, Ausrichtung, Spur), Darstellung (automatisch, hell oder dunkel), Wake Lock, Gelände und Karten offline speichern, Offline-Cache.
+- **Einstellungen:** Liste der Kategorien wie in iOS. Antippen öffnet die Unterseite, „‹ Zurück“ oder nochmaliges Tippen auf den Reiter führt zurück.
+  - Darstellung: automatisch, hell oder dunkel, Wake Lock
+  - Flugseiten: Anordnung der Kästen je Seite (Gleiten, Thermik, Karte, Luftraum, Info), Max. Höhe zurücksetzen
+  - Karte und Ziel: Wegpunkte, Ausrichtung, Spur
+  - Berechnung, Wind und Kreiserkennung, Start und Landung (je mit eigenem „Standard wiederherstellen“)
+  - Gelände und Karten offline speichern
+  - App: Offline-Cache, Version, neueste Version laden
 - **Debug:**
   - Ausführlicher Verbindungsstatus, Datenquellen und Rohdaten
   - Gespeicherte Aufzeichnungen mit Export als .txt und .igc
