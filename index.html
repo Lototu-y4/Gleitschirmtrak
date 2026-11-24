@@ -66,11 +66,15 @@
   #sbRec { color: var(--neg); display: inline-flex; align-items: center; gap: 5px; }
   #sbRec.on::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
   #sbRec.warn { color: var(--warn); }
+  #sbRec.wait { color: var(--info); }
+  #sbRec.wait::before { content: ""; width: 7px; height: 7px; border-radius: 50%; border: 2px solid currentColor; }
 
   #errbar { position: absolute; left: 6px; right: 6px; top: calc(var(--sbar-h) + env(safe-area-inset-top) + 4px); z-index: 50;
     display: none; gap: 8px; align-items: flex-start; background: var(--bad-bg); color: var(--text); border: 2px solid var(--bad); border-radius: 12px;
     padding: 8px 10px; font-size: 15px; font-weight: 600; -webkit-user-select: text; user-select: text; }
   #errbar.show { display: flex; }
+  #errbar.info { background: var(--card); border-color: var(--info); }
+  #errbar.info #errClose { border-color: var(--info); }
   #errText { flex: 1; word-break: break-word; max-height: 4.5em; overflow: hidden; }
   #errClose { width: 48px; height: 40px; margin: 0; padding: 0; flex: none; background: var(--card); color: var(--text); border: 1px solid var(--bad); }
 
@@ -257,8 +261,20 @@
       <button id="btnDisconnect" class="secondary big" disabled>Trennen</button>
     </div>
     <div id="recInterrupted" style="margin-top:12px"></div>
+    <div id="slCard" class="card" style="display:none; margin-top:12px">
+      <div class="kv">
+        <span>Starterkennung</span><b id="slState">–</b>
+        <span>Geschwindigkeit</span><b id="slSpeed">–</b>
+        <span>Höhe über Grund</span><b id="slAgl">–</b>
+        <span id="slDhK">Höhenänderung</span><b id="slDh">–</b>
+        <span>Landeerkennung</span><b id="slLand">–</b>
+      </div>
+      <div class="hint" id="slMsg" style="margin-top:6px"></div>
+    </div>
+    <button id="btnFlyView" class="big go" style="display:none">Zur Fluganzeige</button>
     <button id="btnFlight" class="big go">Flug starten</button>
     <button id="btnEndFlight" class="big danger" style="display:none">Flug beenden</button>
+    <button id="btnArm" class="big secondary">Starterkennung einschalten</button>
   </section>
 
   <section class="page scroll" id="page-einst">
@@ -271,6 +287,10 @@
     <h2>Wind und Kreiserkennung</h2>
     <div id="cfg-wind"></div>
     <button class="secondary" id="btnWindDefaults">Wind und Kreiserkennung: Standard wiederherstellen</button>
+
+    <h2>Start und Landung</h2>
+    <div id="cfg-sl"></div>
+    <button class="secondary" id="btnSlDefaults">Start und Landung: Standard wiederherstellen</button>
 
     <h2>Seite „Gleiten“</h2>
     <div id="cfg-gleiten"></div>
@@ -777,14 +797,16 @@ const Core = (() => {
 <!-- Kreiserkennung und Windschätzung (eigene Dateien, ohne Abhängigkeiten, in Node getestet) -->
 <script src="./kreisen.js"></script>
 <script src="./wind.js"></script>
+<script src="./startlandung.js"></script>
 
 <script>
 "use strict";
 /* ---------- Fehlermeldungen im Klartext (Leiste oben, auf jeder Seite) ---------- */
 var errTimer = null;
-function showErrorBanner(text) {
+function showErrorBanner(text, info) {
   var bar = document.getElementById("errbar");
   document.getElementById("errText").textContent = text;
+  bar.classList.toggle("info", !!info);   // info = Meldung, kein Fehler (blau statt rot)
   bar.classList.add("show");
   clearTimeout(errTimer);
   errTimer = setTimeout(function () { bar.classList.remove("show"); }, 12000);
@@ -1197,7 +1219,7 @@ function handleLine(line, key) {
 /* =====================================================================
    FLUG-ANZEIGE
    ===================================================================== */
-const APP_VERSION = "2026-11-24.2";
+const APP_VERSION = "2026-11-24.3";
 const STALE_MS = 2000;          // ohne neue Daten länger als das → „keine Daten“
 const HOLD_MS = 2000;           // ein Messwert gilt höchstens so lange (Lücken zählen nicht)
 const MIN_COVERAGE = 0.9;       // Fenster gilt als gefüllt ab 90 % Abdeckung
@@ -1217,6 +1239,7 @@ function ingestLine(line, tp, te) {
   stats.lines++;
   lineTimes.push(tp);
   if (rec.active) rec.lines.push([te, line]);
+  else if (startErkennung) vorlaufPush(te, line, null);   // vor dem erkannten Start: Startlauf nicht verlieren
   const p = Core.parseSentence(line);
   if (!p.ok) { stats.bad[p.reason] = (stats.bad[p.reason] || 0) + 1; return p; }
   stats.types[p.type] = (stats.types[p.type] || 0) + 1;
@@ -1229,13 +1252,14 @@ function ingestLine(line, tp, te) {
     cur.rmc = d; tLast.rmc = tp;
     if (d.date) lastRmcDate = d.date.ddmmyy;
     if (d.valid && d.speedKn !== null) Core.pushSample(speedBuf, tp, d.speedKn * Core.KN_TO_MS, KEEP_MS);
-    if (d.valid) kreisFuettern(tp, d);
+    if (d.valid) { kreisFuettern(tp, d); slFuettern(tp, te, d); }
   } else if (p.type === "gga") {
     cur.gga = d; tLast.gga = tp;
     if (Core.ggaHasFix(d) && d.alt !== null) maxAlt = Core.nextMax(maxAlt, d.alt);
-    if (rec.active && d.time) {
-      rec.fixes.push({ utc: d.time.hhmmss, date: lastRmcDate, lat: d.lat, lon: d.lon, q: d.quality,
-        alt: d.alt, sep: d.geoidSep, sats: d.sats, pAlt: tp - tLast.baro <= STALE_MS ? cur.baroAlt : null });
+    if ((rec.active || startErkennung) && d.time) {
+      const fix = { utc: d.time.hhmmss, date: lastRmcDate, lat: d.lat, lon: d.lon, q: d.quality,
+        alt: d.alt, sep: d.geoidSep, sats: d.sats, pAlt: tp - tLast.baro <= STALE_MS ? cur.baroAlt : null };
+      if (rec.active) rec.fixes.push(fix); else vorlaufPush(te, null, fix);
     }
   }
   return p;
@@ -1266,7 +1290,7 @@ const INSTRUMENTS = {
   course:   { name: "Kurs über Grund", long: "Kurs über Grund", unit: "°", cat: "move" },
   gpsQual:  { name: "GPS-Qualität", long: "GPS-Qualität (Satelliten, HDOP)", unit: "Sat", cat: "sys" },
   clock:    { name: "Uhrzeit", long: "Uhrzeit", unit: "", cls: "long", cat: "sys" },
-  recTime:  { name: "Zeit seit Start", long: "Zeit seit dem Start (ab „Flug starten“)", unit: "", cls: "long", cat: "sys" },
+  recTime:  { name: "Zeit seit Start", long: "Zeit seit dem Start (ab „Flug starten“ oder erkanntem Start)", unit: "", cls: "long", cat: "sys" },
   conn:     { name: "Verbindung", long: "Verbindungsstatus und Datenrate", unit: "", cls: "text", cat: "sys" },
   wind:     { name: "Wind", long: "Wind (geschätzt beim Kreisen)", unit: "", cls: "wind", cat: "move" },   // am Ende: ändert keine bestehende Anordnung
   thermGain:{ name: "Höhengewinn Thermik", long: "Höhengewinn in dieser Thermik", unit: "m", cat: "vert" },
@@ -1471,18 +1495,27 @@ const WIND_FELDER = [
   { g: "wind", k: "fluggeschwMaxKmh", t: "Fluggeschwindigkeit plausibel bis (km/h)", step: 1 },
 ];
 const runde = (x) => Math.round(x * 1000) / 1000;
+/* Ein Einstellungsfeld aus der Tabelle (Überschrift, Auswahl oder Zahl); attr = data-Attribute für den change-Handler */
+function feldHtml(d, id, attr, wert, lim) {
+  if (d.h) return `<h3 class="hint" style="margin:14px 2px 4px;font-size:.95rem">${esc(d.h)}</h3>`;
+  const v = String(wert);
+  if (d.opts) return `<label class="hint" for="${id}">${esc(d.t)}</label><select id="${id}" ${attr}>`
+    + d.opts.map(([val, txt]) => `<option value="${val}"${val === v ? " selected" : ""}>${esc(txt)}</option>`).join("") + `</select>`;
+  const f = d.f || 1;
+  return `<div class="field"><span>${esc(d.t)} <small class="hint">(${runde(lim[0] * f)}–${runde(lim[1] * f)})</small></span>`
+    + `<input id="${id}" ${attr} data-f="${f}" type="text" inputmode="decimal" autocomplete="off" value="${String(runde(Number(v) * f)).replace(".", ",")}"></div>`;
+}
+/* Neuer Wert aus einem Feld; undefined = leer oder unlesbar (bisheriger Wert bleibt). Text mit Komma oder Punkt. */
+function feldWert(t) {
+  if (t.tagName === "SELECT") return t.value === "true" ? true : t.value === "false" ? false : t.value;
+  const z = Number(t.value.trim().replace(",", "."));
+  return t.value.trim() !== "" && Number.isFinite(z) ? z / Number(t.dataset.f || 1) : undefined;
+}
 function buildWindSettingsUI() {
   const host = $("cfg-wind");
   if (!KW_OK) { host.innerHTML = '<div class="notice">kreisen.js oder wind.js nicht geladen – Einstellungen nicht verfügbar.</div>'; return; }
-  host.innerHTML = WIND_FELDER.map(d => {
-    if (d.h) return `<h3 class="hint" style="margin:14px 2px 4px;font-size:.95rem">${esc(d.h)}</h3>`;
-    const id = "ws-" + d.g + "-" + d.k, v = String(windSet[d.g][d.k]);
-    if (d.opts) return `<label class="hint" for="${id}">${esc(d.t)}</label><select id="${id}" data-wg="${d.g}" data-wk="${d.k}">`
-      + d.opts.map(([val, txt]) => `<option value="${val}"${val === v ? " selected" : ""}>${esc(txt)}</option>`).join("") + `</select>`;
-    const lim = (d.g === "kreis" ? Kreisen.GRENZEN : d.g === "seite" ? Kreisen.GRENZEN_SEITE : Wind.GRENZEN)[d.k], f = d.f || 1;
-    return `<div class="field"><span>${esc(d.t)} <small class="hint">(${runde(lim[0] * f)}–${runde(lim[1] * f)})</small></span>`
-      + `<input id="${id}" data-wg="${d.g}" data-wk="${d.k}" data-f="${f}" type="text" inputmode="decimal" autocomplete="off" value="${String(runde(Number(v) * f)).replace(".", ",")}"></div>`;
-  }).join("");
+  host.innerHTML = WIND_FELDER.map(d => d.h ? feldHtml(d) : feldHtml(d, "ws-" + d.g + "-" + d.k, `data-wg="${d.g}" data-wk="${d.k}"`, windSet[d.g][d.k],
+    (d.g === "kreis" ? Kreisen.GRENZEN : d.g === "seite" ? Kreisen.GRENZEN_SEITE : Wind.GRENZEN)[d.k])).join("");
 }
 function applyWindSettings() {
   if (!KW_OK) return;
@@ -1494,12 +1527,8 @@ $("cfg-wind").addEventListener("change", (e) => {
   const t = e.target, g = t.dataset.wg, k = t.dataset.wk;
   if (!g || !KW_OK) return;
   e.stopPropagation();   // nicht an onSettingsChange (Seiten-Anordnung) weiterreichen
-  const neu = Object.assign({}, windSet[g]);
-  if (t.tagName === "SELECT") neu[k] = t.value === "true" ? true : t.value === "false" ? false : t.value;
-  else {   // Text mit Komma oder Punkt; leer oder unlesbar → bisheriger Wert bleibt
-    const z = Number(t.value.trim().replace(",", "."));
-    if (t.value.trim() !== "" && Number.isFinite(z)) neu[k] = z / Number(t.dataset.f || 1);
-  }
+  const neu = Object.assign({}, windSet[g]), w = feldWert(t);
+  if (w !== undefined) neu[k] = w;
   windSet[g] = g === "kreis" ? Kreisen.normalisiere(neu) : g === "seite" ? Kreisen.normalisiereSeite(neu) : Wind.normalisiere(neu);
   saveWindSettings(); applyWindSettings(); buildWindSettingsUI();
 });
@@ -1509,6 +1538,155 @@ $("btnWindDefaults").addEventListener("click", () => {
   windSet = { kreis: Kreisen.normalisiere(null), wind: Wind.normalisiere(null), seite: Kreisen.normalisiereSeite(null) };
   saveWindSettings(); applyWindSettings(); buildWindSettingsUI();
 });
+
+/* =====================================================================
+   START- UND LANDEERKENNUNG (Logik in startlandung.js)
+   Starterkennung = Modus, der eingeschaltet bleibt (auch über Neuladen): nach jeder Landung und nach „Flug beenden“
+   wartet die App wieder auf einen Start. Vor dem Start empfangene Daten werden gepuffert, damit der Startlauf
+   in der Aufzeichnung ist (der Flug beginnt mit dem Startlauf, nicht erst mit der Erkennung).
+   ===================================================================== */
+const SL_OK = typeof StartLandung !== "undefined";
+const SL_KEY = "flugapp.startlandung.v1";       // Einstellungen (eigenes „Standard wiederherstellen“)
+const SL_ARM_KEY = "flugapp.starterkennung";    // "1" = Starterkennung eingeschaltet
+const VORLAUF_MS = 180000;                      // so viel Daten vor dem erkannten Start bereithalten
+const FORTSETZEN_MS = 600000;                   // unterbrochener Flug: so lange nach der letzten Speicherung wird er beim Start fortgesetzt
+let slSet = (() => { if (!SL_OK) return {}; try { return StartLandung.normalisiere(JSON.parse(lsGet(SL_KEY) || "null")); } catch (e) { return StartLandung.normalisiere(null); } })();
+let startErkennung = SL_OK && lsGet(SL_ARM_KEY) === "1";
+let slMeldung = "";                             // letzte Meldung (Start, Fehlstart, Landung) für die Startseite
+let slAutoSid = null;                           // Sitzung, die die Starterkennung neu angelegt hat (nur die wird bei Fehlstart gelöscht)
+const vorlauf = [];                             // {te, line} | {te, fix}, solange die Starterkennung wartet
+let slDet = null;
+let slKette = Promise.resolve();                // Aktionen auf die Aufzeichnung nacheinander ausführen
+let slFehlerZeit = -1e12;
+function slFehler(wo, e) {
+  const t = performance.now();
+  if (t - slFehlerZeit < 10000) return;
+  slFehlerZeit = t;
+  log("Start-/Landeerkennung (" + wo + "): " + errText(e), "err");
+}
+if (!SL_OK) setTimeout(() => log("Start- und Landeerkennung nicht verfügbar: startlandung.js wurde nicht geladen. „Flug starten“ funktioniert.", "err"), 0);
+const uhrzeit = (ms) => new Date(ms).toLocaleTimeString("de-CH", { hour12: false, hour: "2-digit", minute: "2-digit" });
+
+function vorlaufPush(te, line, fix) {
+  vorlauf.push(line !== null ? { te, line } : { te, fix });
+  while (vorlauf.length && te - vorlauf[0].te > VORLAUF_MS) vorlauf.shift();
+}
+// Jeder gültige RMC-Satz: Geschwindigkeit, dazu GPS-Höhe und Höhe über Grund, falls frisch
+function slFuettern(tp, te, rmc) {
+  if (!slDet) return;
+  try {
+    const g = cur.gga, frisch = g && Core.ggaHasFix(g) && g.alt !== null && tp - tLast.gga <= STALE_MS;
+    const boden = frisch ? terrainAt(g.lat, g.lon).h : null;
+    slDet.update({ t: te / 1000, geschwindigkeit: rmc.speedKn === null ? null : rmc.speedKn * Core.KN_TO_MS,
+                   hoehe: frisch ? g.alt : null, agl: boden === null ? null : Core.aglOf(g.alt, boden) });
+  } catch (e) { slFehler("Messpunkt", e); }
+}
+function slMelden(text) { slMeldung = text; log(text, "sys"); showErrorBanner(text, true); }
+
+async function slStart(s) {
+  if (rec.active) return;   // inzwischen von Hand gestartet
+  const startMs = Math.round(s.startT * 1000);
+  // Neu geladen während eines Flugs? Dann die unterbrochene Aufzeichnung fortsetzen statt eine zweite anzulegen
+  const offen = rec.interrupted.find(x => Date.now() - (x.lastT || x.start) < FORTSETZEN_MS);
+  if (offen) {
+    await recStart(offen, { vorlaufAb: offen.lastT || offen.start });
+    slAutoSid = null;
+    renderInterrupted();
+    slMelden("Start erkannt " + uhrzeit(startMs) + ": unterbrochener Flug von " + uhrzeit(offen.start) + " wird fortgesetzt");
+    return;
+  }
+  await recStart(null, { start: startMs, art: "auto", vorlaufAb: startMs - 2000 });
+  slAutoSid = rec.active ? rec.session.id : null;
+  slMelden("Start erkannt " + uhrzeit(startMs) + " (" + s.grund + "): Aufzeichnung läuft");
+}
+async function slFehlstart(f) {
+  if (!startErkennung) slDet.stopp();
+  if (!rec.active) return;
+  if (rec.session.id !== slAutoSid) {   // fortgesetzter Flug: nie löschen, nur beenden
+    await recStop();
+    if (startErkennung) slDet.warten();
+    slMelden("Stillstand kurz nach dem Start: fortgesetzter Flug beendet und gespeichert");
+    return;
+  }
+  await recVerwerfen();
+  slMelden("Fehlstart " + uhrzeit(f.t * 1000) + ": Aufzeichnung gelöscht" + (startErkennung ? ", wartet wieder auf Start" : ""));
+}
+async function slLandung(l) {
+  if (rec.active) {
+    const dauer = Core.fmtDuration(Math.max(0, l.landeT * 1000 - rec.session.start));
+    await recStop();
+    slMelden("Landung erkannt " + uhrzeit(l.landeT * 1000) + ": Flug " + dauer + " gespeichert" + (startErkennung ? ", wartet auf den nächsten Start" : ""));
+    if (activeTab === "fly") showTab("start");
+  }
+  if (startErkennung) slDet.warten();
+}
+if (SL_OK) {
+  slDet = StartLandung.createStartLandeDetektor(slSet);
+  slDet.on("fehler", (f) => slFehler("Ereignis " + f.ereignis, f.fehler));
+  const nacheinander = (fn) => (d) => { slKette = slKette.then(() => fn(d)).catch((e) => slFehler("Aufzeichnung", e)); };
+  slDet.on("start", nacheinander(slStart));
+  slDet.on("fehlstart", nacheinander(slFehlstart));
+  slDet.on("landung", nacheinander(slLandung));
+  if (startErkennung) slDet.warten();
+}
+// Starterkennung ein/aus. Während eines Flugs wirkt es erst nach dessen Ende (dann wieder warten oder nicht).
+function slScharf(ein) {
+  startErkennung = !!ein && SL_OK;
+  lsSet(SL_ARM_KEY, startErkennung ? "1" : "0");
+  vorlauf.length = 0;
+  if (!slDet || rec.active) return;
+  if (startErkennung) slDet.warten(); else slDet.stopp();
+}
+// Nach dem Ende eines Flugs (von Hand oder Landung): wieder warten, falls eingeschaltet
+function slNachFlug() { if (slDet) { if (startErkennung) slDet.warten(); else slDet.stopp(); } }
+
+const SL_FELDER = [
+  { k: "landungAuto", t: "Landung automatisch erkennen (beendet und speichert den Flug)", opts: [["true", "ein"], ["false", "aus"]] },
+  { h: "Start" },
+  { k: "startGeschwKmh", t: "Geschwindigkeit über Grund mindestens (km/h)", step: 1 },
+  { k: "startDauerS", t: "… während mindestens (s)", step: 1 },
+  { k: "startAglM", t: "Höhe über Grund mindestens (m)", step: 5 },
+  { k: "startHaltS", t: "… während mindestens (s)", step: 1 },
+  { k: "startHoeheM", t: "Ohne Geländedaten: Höhenänderung mindestens (m)", step: 5 },
+  { k: "fehlstartFensterS", t: "Fehlstart: Stillstand beginnt innerhalb von (s) nach dem Start", step: 10 },
+  { k: "fehlstartRuheS", t: "Fehlstart: Stillstand dauert mindestens (s)", step: 1 },
+  { k: "fehlstartAglM", t: "Fehlstart: höchstens so hoch über Grund (m) – ohne Geländedaten: über/unter der Höhe beim Startlauf", step: 1 },
+  { h: "Landung" },
+  { k: "landGeschwKmh", t: "Geschwindigkeit über Grund unter (km/h)", step: 1 },
+  { k: "landDauerS", t: "… während mindestens (s)", step: 5 },
+  { k: "landAglM", t: "Höhe über Grund höchstens (m)", step: 5 },
+  { k: "landHoehenBandM", t: "GPS-Höhe schwankt dabei höchstens (m)", step: 1 },
+];
+function buildSlSettingsUI() {
+  const host = $("cfg-sl");
+  if (!SL_OK) { host.innerHTML = '<div class="notice">startlandung.js nicht geladen – Einstellungen nicht verfügbar.</div>'; return; }
+  host.innerHTML = SL_FELDER.map(d => d.h ? feldHtml(d) : feldHtml(d, "sl-" + d.k, `data-sk="${d.k}"`, slSet[d.k], StartLandung.GRENZEN[d.k])).join("");
+}
+function saveSlSettings() { lsSet(SL_KEY, JSON.stringify(slSet)); if (slDet) slDet.setEinstellungen(slSet); }
+$("cfg-sl").addEventListener("change", (e) => {
+  const t = e.target, k = t.dataset.sk;
+  if (!k || !SL_OK) return;
+  e.stopPropagation();   // nicht an onSettingsChange (Seiten-Anordnung) weiterreichen
+  const neu = Object.assign({}, slSet), w = feldWert(t);
+  if (w !== undefined) neu[k] = w;
+  slSet = StartLandung.normalisiere(neu);
+  saveSlSettings(); buildSlSettingsUI();
+});
+$("btnSlDefaults").addEventListener("click", () => {
+  if (!SL_OK) return;
+  if (!confirm("Alle Einstellungen für Start und Landung auf Standard zurücksetzen?")) return;
+  slSet = StartLandung.normalisiere(null);
+  saveSlSettings(); buildSlSettingsUI();
+});
+function slDebugText() {
+  if (!SL_OK) return "nicht geladen";
+  const z = slDet.getZustand(), st = slDet.statistik();
+  return "Starterkennung " + (startErkennung ? "ein" : "aus") + " · Landeerkennung " + (slSet.landungAuto ? "ein" : "aus") + " · Zustand " + z.zustand
+    + (z.zustand === "fliegt" ? (z.auto ? " (automatisch)" : "") + (z.inDerLuft ? " · in der Luft" : " · noch nicht abgehoben") : "")
+    + " · Bewegung " + Math.round(z.bewegtS) + " s · Höhe " + Math.round(z.hochS) + " s · Boden " + Math.round(z.ruheS) + " s"
+    + " · Vorlauf " + vorlauf.length + " · bisher " + st.starts + " Starts, " + st.fehlstarts + " Fehlstarts, " + st.landungen + " Landungen"
+    + (slMeldung ? " · zuletzt: " + slMeldung : "");
+}
 
 /* Wind-Kachel: Werte für die Anzeige */
 function computeWind(now, noData) {
@@ -1637,8 +1815,8 @@ function computeInstrument(id, now, noData) {
       return { text: d.toLocaleTimeString("de-CH", { hour12: false }), sub: "Gerätezeit", stale: false };
     }
     case "recTime":
-      if (!rec.active) return { text: "–", sub: "noch nicht gestartet", stale: false };
-      return { text: Core.fmtDuration(Date.now() - rec.session.start), sub: "seit „Flug starten“ · Aufzeichnung läuft", stale: false };
+      if (!rec.active) return { text: "–", sub: startErkennung ? "wartet auf Start" : "noch nicht gestartet", stale: false };
+      return { text: Core.fmtDuration(Math.max(0, Date.now() - rec.session.start)), sub: (rec.session.art === "auto" ? "seit erkanntem Start" : "seit „Flug starten“") + " · Aufzeichnung läuft", stale: false };
     case "speedAvg": {
       const r = Core.windowMean(speedBuf, now, settings.avgWin * 1000, HOLD_MS, MIN_COVERAGE);
       const stale = noData || !freshOf("rmc", now);
@@ -1791,14 +1969,24 @@ async function startFlight(resume) {
   if (!rec.active) {
     if (!resume && connState !== "connected" && !confirm("Noch nicht mit dem Vario verbunden. Flug trotzdem starten?")) return;
     await recStart(resume || null);
+    if (rec.active && slDet) slDet.flugBegonnen(Date.now() / 1000);   // Landeerkennung, aber nie ein Fehlstart
   }
+  showFly();
+}
+function showFly() {
   flyIndex = phasenwahl && phasenwahl.getZustand().modus === "thermik" ? 1 : 0;
   showTab("fly");
 }
 $("btnFlight").addEventListener("click", () => startFlight(null));
+$("btnFlyView").addEventListener("click", showFly);
+$("btnArm").addEventListener("click", () => {
+  slScharf(!startErkennung);
+  if (startErkennung && !rec.active) showFly();   // wartet auf den Start: gleich die Fluganzeige
+});
 $("btnEndFlight").addEventListener("click", async () => {
   if (!confirm("Flug beenden? Die Aufzeichnung wird gespeichert.")) return;
   await recStop();
+  slNachFlug();
   showTab("start");
 });
 
@@ -1823,7 +2011,8 @@ function render() {
   $("sbAge").textContent = lastMsgAt ? (age / 1000).toFixed(1) + " s" : "";
   $("sbRate").textContent = connState === "connected" ? lineRate(now).toFixed(0) + "/s" : "";
   const sbRec = $("sbRec");
-  if (rec.active) { sbRec.textContent = Core.fmtDuration(Date.now() - rec.session.start); sbRec.className = "on"; }
+  if (rec.active) { sbRec.textContent = Core.fmtDuration(Math.max(0, Date.now() - rec.session.start)); sbRec.className = "on"; }
+  else if (startErkennung) { sbRec.textContent = "Start?"; sbRec.className = "wait"; }
   else if (rec.interrupted.length) { sbRec.textContent = "⚠ Aufz."; sbRec.className = "warn"; }
   else sbRec.textContent = "";
 
@@ -1864,8 +2053,33 @@ function renderStart(now, noData) {
   const el = $("startStatus");
   if (el.className !== "bigstat " + cls) el.className = "bigstat " + cls;
   setText("ssMain", main); setText("ssSub", sub);
-  setText("btnFlight", rec.active ? "Zur Fluganzeige" : "Flug starten");
+  const warten = startErkennung && !rec.active;
+  setText("btnFlight", rec.active ? "Zur Fluganzeige" : warten ? "Jetzt starten" : "Flug starten");
+  const fc = "big " + (warten ? "secondary" : "go");
+  if ($("btnFlight").className !== fc) $("btnFlight").className = fc;
+  $("btnFlyView").style.display = warten ? "" : "none";
   $("btnEndFlight").style.display = rec.active ? "" : "none";
+  $("btnArm").style.display = SL_OK ? "" : "none";
+  setText("btnArm", startErkennung ? "Starterkennung ausschalten" : "Starterkennung einschalten");
+  renderSlCard(now);
+}
+// Start und Landung auf der Startseite: Zustand und die Werte, an denen die Erkennung hängt
+function renderSlCard(now) {
+  const card = $("slCard");
+  const zeigen = SL_OK && (startErkennung || rec.active || slMeldung !== "");
+  if (card.style.display !== (zeigen ? "" : "none")) card.style.display = zeigen ? "" : "none";
+  if (!zeigen) return;
+  const z = slDet.getZustand(), L = z.letzt, frisch = freshOf("rmc", now), warten = z.zustand === "wartet";
+  setText("slState", warten ? "wartet auf Start" + (z.bewegtS > 0 ? " · in Bewegung " + Math.round(z.bewegtS) + " s" : "")
+    : startErkennung ? (rec.active ? "ein · nach dem Flug wieder warten" : "ein") : "aus");
+  setText("slSpeed", !frisch || L.geschwKmh === null ? "keine Daten" : Math.round(L.geschwKmh) + " km/h" + (warten ? " · Start ab " + slSet.startGeschwKmh : ""));
+  setText("slAgl", !frisch ? "keine Daten" : L.agl === null ? "unbekannt" : Math.round(L.agl) + " m" + (warten ? " · Start ab " + slSet.startAglM : ""));
+  const dh = warten && frisch && L.agl === null;   // Höhenänderung zählt nur ohne Geländedaten
+  $("slDhK").style.display = $("slDh").style.display = dh ? "" : "none";
+  if (dh) setText("slDh", (z.hoeheAenderung === null ? "–" : Core.fmtSigned(z.hoeheAenderung, 0).text + " m") + " · Start ab ±" + slSet.startHoeheM);
+  setText("slLand", !slSet.landungAuto ? "aus" : !rec.active ? "ein"
+    : !z.inDerLuft ? "ein · wartet aufs Abheben" : z.ruheS > 0 ? "ein · am Boden seit " + Math.round(z.ruheS) + " s" : "ein");
+  setText("slMsg", slMeldung);
 }
 function kwDebugKreis() {
   if (!KW_OK) return "nicht geladen";
@@ -1893,6 +2107,7 @@ function renderDebugSources(now) {
     ["Puffer", "Vario " + varioBuf.length + " · Geschw. " + speedBuf.length, ""],
     ["Kreiserkennung", kwDebugKreis(), ""],
     ["Windschätzung", kwDebugWind(), ""],
+    ["Start und Landung", slDebugText(), ""],
     ...(stats.types.lxwpw ? [["LXWPW · Gerätewind", "Felder roh (Bedeutung nicht dokumentiert, nicht ausgewertet): " + (lastLxwpwRaw || "–"), ""]] : []),
     ["Zeilenrate", lineRate(now).toFixed(1) + " /s", ""],
   ];
@@ -2019,13 +2234,21 @@ function idb() {
 const reqP = (r) => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
 const txDone = (tx) => new Promise((res, rej) => { tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error || new Error("Transaktion abgebrochen")); });
 
-async function recStart(resume) {
+/* opts: start (ms, Flugbeginn, z. B. Beginn des Startlaufs), art ("manuell" | "auto"),
+         vorlaufAb (ms: gepufferte Daten ab dieser Zeit übernehmen, sonst verwerfen) */
+async function recStart(resume, opts) {
+  opts = opts || {};
   try {
     const db = await idb();
-    const s = resume || { id: Date.now(), start: Date.now(), end: null, lines: 0, fixes: 0, lastT: Date.now(), version: APP_VERSION };
+    const s = resume || { id: Date.now(), start: opts.start || Date.now(), end: null, lines: 0, fixes: 0, lastT: Date.now(), version: APP_VERSION,
+                          art: opts.art || "manuell" };
     s.end = null;
     const tx = db.transaction("sessions", "readwrite"); tx.objectStore("sessions").put(s); await txDone(tx);
-    rec.session = s; rec.active = true; rec.lines = []; rec.fixes = [];
+    // ohne await bis hier: keine Zeile geht zwischen Vorlauf und laufender Aufzeichnung verloren
+    const vl = opts.vorlaufAb ? vorlauf.filter(x => x.te >= opts.vorlaufAb) : [];
+    vorlauf.length = 0;
+    rec.session = s; rec.active = true;
+    rec.lines = vl.filter(x => x.line).map(x => [x.te, x.line]); rec.fixes = vl.filter(x => x.fix).map(x => x.fix);
     rec.interrupted = rec.interrupted.filter(x => x.id !== s.id);
     clearInterval(rec.timer); rec.timer = setInterval(recFlush, 2000);
     log((resume ? "Aufzeichnung fortgesetzt" : "Aufzeichnung gestartet") + " (" + new Date(s.start).toLocaleString("de-CH") + ")", "sys");
@@ -2070,6 +2293,25 @@ async function recStop() {
     } catch (e) { log("Aufzeichnung konnte nicht abgeschlossen werden: " + errText(e), "err"); }
   }
   rec.session = null;
+  renderRecInfo(); refreshSessions();
+}
+// Fehlstart: laufende Aufzeichnung abbrechen und ganz löschen
+async function recVerwerfen() {
+  const s = rec.session;
+  rec.active = false;                       // zuerst: keine neuen Zeilen mehr in diese Aufzeichnung
+  clearInterval(rec.timer); rec.timer = null;
+  if (rec.flushing) { try { await rec.flushing; } catch (e) { /* wird unten gelöscht */ } }
+  rec.lines = []; rec.fixes = []; rec.session = null;
+  if (s) {
+    try { await deleteSession(s.id); log("Aufzeichnung verworfen (Fehlstart)", "sys"); }
+    catch (e) {
+      log("Löschen nach Fehlstart fehlgeschlagen: " + errText(e), "err");
+      try {   // wenigstens abschliessen, sonst erscheint sie beim nächsten Laden als „unterbrochener Flug“
+        s.end = Date.now();
+        const db = await idb(); const tx = db.transaction("sessions", "readwrite"); tx.objectStore("sessions").put(s); await txDone(tx);
+      } catch (e2) { /* bleibt offen */ }
+    }
+  }
   renderRecInfo(); refreshSessions();
 }
 async function closeInterrupted(s) {
@@ -2151,7 +2393,7 @@ async function refreshSessions() {
     d.className = "sess";
     const dur = Core.fmtDuration((s.end || s.lastT || s.start) - s.start);
     d.innerHTML = `<div class="t">${esc(new Date(s.start).toLocaleString("de-CH"))}${running ? " · läuft" : s.end === null ? " · unterbrochen" : ""}</div>
-      <div class="m">Dauer ${dur} · ${s.lines} Zeilen · ${s.fixes} GPS-Fixes</div>
+      <div class="m">Dauer ${dur} · ${s.lines} Zeilen · ${s.fixes} GPS-Fixes${s.art === "auto" ? " · Start erkannt" : ""}</div>
       <div class="row"><button class="secondary e-txt">.txt</button><button class="secondary e-igc">.igc</button><button class="danger e-del">Löschen</button></div>`;
     d.querySelector(".e-txt").onclick = () => exportSession(s, "txt");
     d.querySelector(".e-igc").onclick = () => exportSession(s, "igc");
@@ -2510,6 +2752,7 @@ window.addEventListener("unhandledrejection", (e) => log("Unbehandelter Fehler: 
 for (const pid of PAGE_IDS) buildInstrumentPage(pid);
 buildSettingsUI();
 buildWindSettingsUI();
+buildSlSettingsUI();
 showTab(activeTab);
 detectInterrupted();
 checkOffline();
@@ -2652,6 +2895,7 @@ function buildDiagReport() {
   kv("Kreiserkennung", kwDebugKreis());
   kv("Windschätzung", kwDebugWind());
   for (const x of kwLog.slice(-15)) L.push("  " + x);
+  kv("Start und Landung", slDebugText());
   kv("Lücken > 1 s · > 2 s · > 5 s", diag.gaps.join(" · ") + " · längste " + (diag.maxGap / 1000).toFixed(2) + " s" + (diag.maxGapAt ? " um " + diag.maxGapAt : ""));
   for (const [key, c] of diag.chars) {
     L.push("Characteristic " + key);
@@ -2670,6 +2914,7 @@ function buildDiagReport() {
   kv("Service-UUIDs", parseUuidList(uuidBox.value, () => {}).join(", "));
   const s = Object.assign({}, settings); delete s.pilot; delete s.glider;
   kv("Anzeige", JSON.stringify(s));
+  kv("Start und Landung", JSON.stringify(slSet));
   kv("Aufzeichnung", rec.active ? "läuft · " + rec.lines.length + " Zeilen im Puffer" : "aus");
 
   sec("Ereignisse (" + diag.events.length + (diag.eventsSkipped ? ", " + diag.eventsSkipped + " ältere ausgelassen" : "") + ")");

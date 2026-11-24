@@ -9,7 +9,8 @@ Online: <https://lototu-y4.github.io/Gleitschirmtrak/>
 
 - **Start:**
   - Mit dem Vario verbinden und den Verbindungsstatus auf einen Blick sehen.
-  - „Flug starten“ öffnet die Fluganzeige und startet automatisch die Aufzeichnung.
+  - „Flug starten“ öffnet die Fluganzeige und startet sofort die Aufzeichnung.
+  - „Starterkennung einschalten“ öffnet die Fluganzeige, die Aufzeichnung beginnt aber erst mit dem erkannten Start (siehe „Start- und Landeerkennung“). Solange die App wartet, stehen hier „Zur Fluganzeige“, „Jetzt starten“ und „Starterkennung ausschalten“.
   - Während des Flugs stehen hier „Zur Fluganzeige“ und „Flug beenden“.
   - Ein unterbrochener Flug (z. B. nach einem Neuladen) wird hier zum Fortsetzen angeboten.
 - **Fluganzeige:**
@@ -17,7 +18,7 @@ Online: <https://lototu-y4.github.io/Gleitschirmtrak/>
   - Beim Kreisen wechselt die Anzeige automatisch auf „Thermik“ und danach zurück auf „Gleiten“ (siehe „Automatischer Seitenwechsel“). Wischen geht jederzeit und gilt bis zum nächsten automatischen Wechsel.
   - Die Seite „Info“ zeigt oben die Flugphase („Gleiten“, „Kreisen links/rechts“ mit Anzahl Kreise) und welche Seite die Automatik gerade wählt.
   - „Menü“ führt zurück zur Startseite, der Flug läuft dabei weiter.
-- **Einstellungen:** Berechnungsfenster, Wind und Kreiserkennung (mit eigenem „Standard wiederherstellen“), Anordnung der Kästen, Darstellung (automatisch, hell oder dunkel), Wake Lock, Geländedaten offline speichern, Offline-Cache.
+- **Einstellungen:** Berechnungsfenster, Wind und Kreiserkennung, Start und Landung (je mit eigenem „Standard wiederherstellen“), Anordnung der Kästen, Darstellung (automatisch, hell oder dunkel), Wake Lock, Geländedaten offline speichern, Offline-Cache.
 - **Debug:**
   - Ausführlicher Verbindungsstatus, Datenquellen und Rohdaten
   - Gespeicherte Aufzeichnungen mit Export als .txt und .igc
@@ -32,6 +33,8 @@ Online: <https://lototu-y4.github.io/Gleitschirmtrak/>
 | `manifest.webmanifest` | Web-App-Manifest |
 | `kreisen.js` | Kreiserkennung (Zustandsmaschine, ohne Abhängigkeiten, auch in Node lauffähig) |
 | `wind.js` | Windschätzung aus Kreisen, Güte, Gültigkeit, Pfeilwinkel (ohne Abhängigkeiten) |
+| `startlandung.js` | Start-, Fehlstart- und Landeerkennung (Zustandsmaschine, ohne Abhängigkeiten) |
+| `tests/startlandung.test.js` | Tests der Start- und Landeerkennung mit erfundenen Flügen, Autofahrt, Fehlstart, Datenlücke |
 | `tests/core.test.js` | Tests für Parser, Prüfsumme, Berechnungen, IGC-Export und Geländeabfrage |
 | `tests/kreisen.test.js`, `tests/phasenwahl.test.js`, `tests/wind.test.js`, `tests/sim.js` | Tests der Kreiserkennung, des Seitenwechsels und der Windschätzung mit simulierten Flügen |
 | `tests/igc.test.js`, `werkzeuge/igc.js` | IGC-Dateien lesen (B-Records, I-Record-Erweiterungen) |
@@ -55,7 +58,7 @@ Online: <https://lototu-y4.github.io/Gleitschirmtrak/>
   Ein Strich erscheint, wenn der Betrag über der Schwelle liegt (Standard 60), das Fenster noch nicht gefüllt ist oder Daten fehlen.
 - **Ø Geschwindigkeit über Grund:** zeitgewichteter Mittelwert der GPS-Geschwindigkeit über ein gleitendes Fenster (Standard 10 s, 5–120 s).
 - **Höhengewinn in dieser Thermik:** GPS-Höhe jetzt minus GPS-Höhe beim Andrehen in die Thermik. Die Thermik beginnt mit der Drehung, die zum Wechsel auf „Thermik“ geführt hat, und bleibt über einen Wechsel der Drehrichtung im Bart hinweg dieselbe. Darunter stehen Dauer und mittleres Steigen. Ausserhalb der Thermik zeigt der Kasten einen Strich und darunter das Ergebnis der letzten Thermik.
-- **Zeit seit Start:** Zeit seit „Flug starten“ (gleich lang wie die Aufzeichnung).
+- **Zeit seit Start:** Zeit seit „Flug starten“ oder seit dem Beginn des erkannten Starts (gleich lang wie die Aufzeichnung).
 - **Regeln für alle Fenster:**
   - Jeder Messwert gilt bis zum nächsten, höchstens aber 2 s.
   - Längere Lücken zählen nicht mit.
@@ -160,6 +163,39 @@ node werkzeuge/auswertung.js flugdaten/igc flugdaten/auswertung
     - Steigende Thermiken (≥ 2 Kreise) lagen zu 93 % der Kreiszeit auf der Thermik-Seite. Der Rest ist die Zeit bis zur Erkennung.
     - Steigen ohne Kreisen (Hang, Soaring) lag nur zu 4 % auf der Thermik-Seite.
     - 45 Episoden ohne vollen Kreis (einzelne Drehungen ab 250°). 132 mit Höhenverlust, meist 0–1 Kreise und höchstens 20 m, also Probierkreise in schwachem Steigen; 16 davon kurz vor der Landung.
+
+## Start- und Landeerkennung (`startlandung.js`)
+
+**Nur eine Erkennung aus GPS-Daten.** Sie entscheidet aus der Geschwindigkeit über Grund, der Höhe über Grund (AGL) und der Änderung der GPS-Höhe.
+
+- **Eingang:** jeder gültige `$GPRMC` (Geschwindigkeit) mit der letzten frischen GPS-Höhe und der AGL an dieser Position. Zeiten sind Wanduhr-Zeiten der empfangenen Zeilen.
+- **Start** (Standardwerte, alle einstellbar):
+  - mindestens 8 s lang mindestens 15 km/h über Grund,
+  - **und** seit mindestens 4 s mindestens 25 m über Grund.
+  - Ohne Geländedaten (ausserhalb der Kacheln, offline ohne gespeichertes Gebiet) gilt statt der AGL eine Änderung der GPS-Höhe um mindestens 20 m seit Beginn der Bewegung.
+  - Der Flug beginnt mit dem Startlauf, also mit der Bewegung, höchstens 60 s vor der Höhenbedingung. Die Daten davor hält die App bis 3 min lang bereit, Startlauf und Abheben sind also in der Aufzeichnung und in der IGC-Datei.
+  - Kurze Einbrüche bis 2 s sind erlaubt. Bei einer Datenlücke über 5 s beginnt alles neu.
+- **Am Boden:** unter 5 km/h, höchstens 40 m über Grund (falls bekannt), und die GPS-Höhe schwankt dabei höchstens um 8 m.
+- **Fehlstart:** Die Aufzeichnung wird **gelöscht**, und die App wartet wieder auf einen Start, wenn der Schirm innerhalb von 60 s nach einem erkannten Start wieder beim Startplatz steht:
+  - mindestens 10 s lang unter 5 km/h,
+  - **und** höchstens 15 m über Grund, ohne Geländedaten höchstens 15 m über oder unter der Höhe beim Startlauf.
+  - Das ist strenger als die Landung. Wer bei starkem Wind 25–40 m über dem Hang fast stillsteht, verliert seinen Flug nicht.
+  - Nur automatisch gestartete Flüge werden so gelöscht, nie ein von Hand gestarteter oder fortgesetzter.
+- **Landung** (einstellbar ein/aus, Standard ein): 30 s am Boden. Dann wird der Flug beendet und gespeichert.
+  - Bei einem von Hand gestarteten Flug erst, nachdem er einmal die Startbedingung erfüllt hat. Wer am Startplatz „Flug starten“ tippt und dann wartet, wird nicht „gelandet“.
+  - Ist die Landeerkennung aus, läuft der Flug bis „Flug beenden“.
+- **Starterkennung als Modus:** Sie bleibt eingeschaltet, auch über ein Neuladen. Nach einer erkannten Landung und nach „Flug beenden“ wartet die App wieder auf den nächsten Start. Ausschalten während eines Flugs wirkt nach dessen Ende.
+- **Neu geladen während des Flugs:** Wird ein Start erkannt und gibt es eine unterbrochene Aufzeichnung, die vor höchstens 10 min zuletzt gespeichert wurde, wird diese fortgesetzt statt eine zweite angelegt.
+- **Anzeige:**
+  - Die Startseite zeigt Zustand, Geschwindigkeit, AGL (ohne Geländedaten die Höhenänderung), den Stand der Landeerkennung und die letzte Meldung.
+  - Die Statusleiste zeigt „Start?“, solange die App wartet.
+  - Start, Fehlstart und Landung erscheinen als blaue Meldung oben und im Log.
+- **Bekannte Grenzen:**
+  - Seilbahn oder Sessellift über einem Tal erfüllen die Startbedingung. Hält die Fahrt länger als das Fehlstart-Fenster, wird sie als Flug gespeichert.
+  - Ohne Geländedaten kann eine Autofahrt auf einer Bergstrasse (Geschwindigkeit und Höhenänderung) einen Start auslösen. Mit Geländedaten nicht, weil die AGL am Boden bleibt. Darum vor dem Flug das Gebiet offline speichern.
+  - Bei starkem Gegenwind am Start kann die Geschwindigkeit über Grund unter 15 km/h bleiben. Dann wird der Start erst erkannt, wenn der Schirm schneller über Grund fliegt. Der Flug beginnt dann erst in diesem Moment, der Start selbst fehlt in der Aufzeichnung. In diesem Fall besser „Flug starten“ tippen.
+  - Hängt der Schirm bei starkem Wind fast still in der Luft, gibt es keine Landung, solange die AGL über 40 m liegt oder die Höhe sich ändert.
+  - Die Landung braucht 30 s Daten am Boden. Wird das Vario gleich nach dem Aufsetzen ausgeschaltet oder bricht Bluetooth ab, bleibt der Flug offen. Neue Daten, etwa nach der Heimfahrt, kämen dann noch in diesen Flug. In diesem Fall „Flug beenden“ tippen.
 
 ## Höhe über Grund (AGL)
 
