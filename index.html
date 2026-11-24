@@ -97,20 +97,21 @@
   .tabbar button.on { color: var(--accent-text); background: var(--accent); }
   .tabbar button.menu { flex: 0.8; color: var(--text); }
   #ftabs button { font-size: 15px; letter-spacing: -0.02em; }
+  #tabs { height: calc(46px + env(safe-area-inset-bottom)); }
+  #tabs button { display: flex; align-items: center; justify-content: center; }
+  #tabs svg { width: 26px; height: 26px; }
   #ftabs { display: none; }
   body.flying #tabs { display: none; }
   body.flying #ftabs { display: flex; }
 
   /* ---------- Startseite ---------- */
-  .bigstat { border-radius: 14px; padding: 18px 16px; margin-bottom: 4px; background: var(--card); border: 2px solid var(--card); }
-  .bigstat .bs-main { display: flex; align-items: center; gap: 12px; font-size: 32px; font-weight: 800; line-height: 1.1; letter-spacing: -0.01em; }
-  .bigstat .bs-main::before { content: ""; flex: none; width: 15px; height: 15px; border-radius: 50%; background: currentColor;
-    box-shadow: 0 0 0 5px color-mix(in srgb, currentColor 22%, transparent); }
-  .bigstat .bs-sub { font-size: 17px; font-weight: 600; color: var(--dim); margin-top: 8px; }
-  .bigstat.st-ok .bs-main { color: var(--ok); }
-  .bigstat.st-stale { border-color: var(--warn); } .bigstat.st-stale .bs-main { color: var(--warn); }
-  .bigstat.st-bad { border-color: var(--bad); } .bigstat.st-bad .bs-main { color: var(--bad); }
   button.go { margin-top: 12px; }
+  /* Hintergrundfoto (Aletschgletscher) und runde Knöpfe auf der Startseite */
+  #page-start { background: var(--bg) url("startbild.webp") center / cover no-repeat; }
+  #page-start.active { display: flex; flex-direction: column; }
+  #page-start > :first-child { margin-top: auto; }   /* Knöpfe unten, Foto oben frei */
+  #page-start button { border-radius: 999px; }
+  #page-start #btnConnect, #page-start #btnDisconnect { min-height: 48px; padding: 10px 14px; font-size: 1.05rem; }
 
   /* ---------- Instrument-Kästen ---------- */
   .igrid { display: grid; gap: 4px; height: 100%; }
@@ -302,26 +303,11 @@
 <main>
   <!-- ================= START ================= -->
   <section class="page scroll" id="page-start">
-    <div id="startStatus" class="bigstat st-bad">
-      <div class="bs-main" id="ssMain">Nicht verbunden</div>
-      <div class="bs-sub" id="ssSub">–</div>
-    </div>
     <div class="row">
       <button id="btnConnect" class="big">Verbinden</button>
       <button id="btnDisconnect" class="secondary big" disabled>Trennen</button>
     </div>
     <div id="recInterrupted" style="margin-top:12px"></div>
-    <div id="slCard" class="card" style="display:none; margin-top:12px">
-      <div class="kv">
-        <span>Starterkennung</span><b id="slState">–</b>
-        <span>Geschwindigkeit</span><b id="slSpeed">–</b>
-        <span>Höhe über Grund</span><b id="slAgl">–</b>
-        <span id="slDhK">Höhenänderung</span><b id="slDh">–</b>
-        <span>Landeerkennung</span><b id="slLand">–</b>
-      </div>
-      <div class="hint" id="slMsg" style="margin-top:6px"></div>
-    </div>
-    <button id="btnFlyView" class="big go" style="display:none">Zur Fluganzeige</button>
     <button id="btnFlight" class="big go">Flug starten</button>
     <button id="btnEndFlight" class="big danger" style="display:none">Flug beenden</button>
     <button id="btnArm" class="big secondary">Starterkennung einschalten</button>
@@ -530,9 +516,9 @@
 </main>
 
 <nav id="tabs" class="tabbar">
-  <button data-tab="start">Start</button>
-  <button data-tab="einst">Einstellungen</button>
-  <button data-tab="debug">Debug</button>
+  <button data-tab="start" aria-label="Start" title="Start"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 11L12 4l8.5 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5.5h4V20"/></svg></button>
+  <button data-tab="einst" aria-label="Einstellungen" title="Einstellungen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+  <button data-tab="debug" aria-label="Debug" title="Debug"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="7" width="10" height="13" rx="5"/><path d="M9.5 7V5.5a2.5 2.5 0 0 1 5 0V7M12 11v9M3.5 13H7M17 13h3.5M4.5 8.5L7.5 10M19.5 8.5L16.5 10M4.5 18.5l3-1.5M19.5 18.5l-3-1.5"/></svg></button>
 </nav>
 <nav id="ftabs" class="tabbar">
   <button data-fp="0">Gleiten</button>
@@ -1336,7 +1322,7 @@ function handleLine(line, key) {
 /* =====================================================================
    FLUG-ANZEIGE
    ===================================================================== */
-const APP_VERSION = "2026-11-24.5";
+const APP_VERSION = "2026-11-24.8";
 const STALE_MS = 2000;          // ohne neue Daten länger als das → „keine Daten“
 const HOLD_MS = 2000;           // ein Messwert gilt höchstens so lange (Lücken zählen nicht)
 const MIN_COVERAGE = 0.9;       // Fenster gilt als gefüllt ab 90 % Abdeckung
@@ -1721,11 +1707,13 @@ async function slStart(s) {
     slAutoSid = null;
     renderInterrupted();
     slMelden("Start erkannt " + uhrzeit(startMs) + ": unterbrochener Flug von " + uhrzeit(offen.start) + " wird fortgesetzt");
+    if (rec.active) showFly();
     return;
   }
   await recStart(null, { start: startMs, art: "auto", vorlaufAb: startMs - 2000 });
   slAutoSid = rec.active ? rec.session.id : null;
   slMelden("Start erkannt " + uhrzeit(startMs) + " (" + s.grund + "): Aufzeichnung läuft");
+  if (rec.active) showFly();
 }
 async function slFehlstart(f) {
   if (!startErkennung) slDet.stopp();
@@ -2062,6 +2050,7 @@ let activeTab = lsGet("flugapp.tab");
 if (!["start", "einst", "debug"].includes(activeTab)) activeTab = "start";
 let flyIndex = 0;
 function showTab(t) {
+  if (t === "fly" && !rec.active) t = "start";   // Fluganzeige nur während eines Flugs
   activeTab = t;
   if (t !== "fly") lsSet("flugapp.tab", t);
   for (const id of TABS) $("page-" + id).classList.toggle("active", id === t);
@@ -2125,10 +2114,8 @@ function showFly() {
   showTab("fly");
 }
 $("btnFlight").addEventListener("click", () => startFlight(null));
-$("btnFlyView").addEventListener("click", showFly);
 $("btnArm").addEventListener("click", () => {
   slScharf(!startErkennung);
-  if (startErkennung && !rec.active) showFly();   // wartet auf den Start: gleich die Fluganzeige
 });
 $("btnEndFlight").addEventListener("click", async () => {
   if (!confirm("Flug beenden? Die Aufzeichnung wird gespeichert.")) return;
@@ -2164,8 +2151,9 @@ function render() {
   else sbRec.textContent = "";
 
   kreisTick(now);   // Kreisende auch ohne neue Daten (Datenlücke) erkennen
+  if (activeTab === "fly" && !rec.active) { showTab("start"); return; }   // Flug zu Ende: weg von der Fluganzeige
   if (activeTab === "fly") { for (const pid of PAGE_IDS) renderInstrumentPage(pid, now, noData); renderPhaseBar(); }
-  if (activeTab === "start") renderStart(now, noData);
+  if (activeTab === "start") renderStart(now);
   if (activeTab === "debug") {
     const b = stats.bad;
     $("rawStats").textContent = `Zeilen ${stats.lines} · verworfen: Prüfsumme falsch ${b.bad}, ohne Prüfsumme ${b.nocs}, unlesbar ${b.format}`
@@ -2180,53 +2168,14 @@ function render() {
 }
 
 function setText(id, t) { const el = $(id); if (el.textContent !== t) el.textContent = t; }
-function renderStart(now, noData) {
-  let main, sub, cls;
-  if (connState === "connected" && !noData) {
-    main = "Verbunden"; cls = "st-ok";
-    sub = (device && device.name ? device.name + " · " : "") + lineRate(now).toFixed(0) + " Zeilen/s";
-  } else if (connState === "connected") {
-    main = "Verbunden – keine Daten"; cls = "st-stale";
-    sub = lastMsgAt ? "seit " + ((now - lastMsgAt) / 1000).toFixed(0) + " s nichts empfangen" : "noch nichts empfangen";
-  } else if (connState === "connecting") {
-    main = "Verbindet …"; cls = "st-stale"; sub = "Gerät in der Liste wählen";
-  } else if (connState === "disconnected") {
-    main = "Verbindung getrennt"; cls = "st-bad";
-    sub = !userDisconnect && $("autoReconnect").checked ? "versucht neu zu verbinden …" : "„Verbinden“ tippen";
-  } else {
-    main = "Nicht verbunden"; cls = "st-bad";
-    sub = bt ? "Vario einschalten und „Verbinden“ tippen" : "Kein Web Bluetooth – Seite in Bluefy öffnen";
-  }
-  const el = $("startStatus");
-  if (el.className !== "bigstat " + cls) el.className = "bigstat " + cls;
-  setText("ssMain", main); setText("ssSub", sub);
+function renderStart(now) {
   const warten = startErkennung && !rec.active;
   setText("btnFlight", rec.active ? "Zur Fluganzeige" : warten ? "Jetzt starten" : "Flug starten");
   const fc = "big " + (warten ? "secondary" : "go");
   if ($("btnFlight").className !== fc) $("btnFlight").className = fc;
-  $("btnFlyView").style.display = warten ? "" : "none";
   $("btnEndFlight").style.display = rec.active ? "" : "none";
   $("btnArm").style.display = SL_OK ? "" : "none";
   setText("btnArm", startErkennung ? "Starterkennung ausschalten" : "Starterkennung einschalten");
-  renderSlCard(now);
-}
-// Start und Landung auf der Startseite: Zustand und die Werte, an denen die Erkennung hängt
-function renderSlCard(now) {
-  const card = $("slCard");
-  const zeigen = SL_OK && (startErkennung || rec.active || slMeldung !== "");
-  if (card.style.display !== (zeigen ? "" : "none")) card.style.display = zeigen ? "" : "none";
-  if (!zeigen) return;
-  const z = slDet.getZustand(), L = z.letzt, frisch = freshOf("rmc", now), warten = z.zustand === "wartet";
-  setText("slState", warten ? "wartet auf Start" + (z.bewegtS > 0 ? " · in Bewegung " + Math.round(z.bewegtS) + " s" : "")
-    : startErkennung ? (rec.active ? "ein · nach dem Flug wieder warten" : "ein") : "aus");
-  setText("slSpeed", !frisch || L.geschwKmh === null ? "keine Daten" : Math.round(L.geschwKmh) + " km/h" + (warten ? " · Start ab " + slSet.startGeschwKmh : ""));
-  setText("slAgl", !frisch ? "keine Daten" : L.agl === null ? "unbekannt" : Math.round(L.agl) + " m" + (warten ? " · Start ab " + slSet.startAglM : ""));
-  const dh = warten && frisch && L.agl === null;   // Höhenänderung zählt nur ohne Geländedaten
-  $("slDhK").style.display = $("slDh").style.display = dh ? "" : "none";
-  if (dh) setText("slDh", (z.hoeheAenderung === null ? "–" : Core.fmtSigned(z.hoeheAenderung, 0).text + " m") + " · Start ab ±" + slSet.startHoeheM);
-  setText("slLand", !slSet.landungAuto ? "aus" : !rec.active ? "ein"
-    : !z.inDerLuft ? "ein · wartet aufs Abheben" : z.ruheS > 0 ? "ein · am Boden seit " + Math.round(z.ruheS) + " s" : "ein");
-  setText("slMsg", slMeldung);
 }
 function kwDebugKreis() {
   if (!KW_OK) return "nicht geladen";
