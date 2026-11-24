@@ -169,11 +169,14 @@
 
   /* ---------- Karte (grosser Kasten) ---------- */
   .ibox.karte { padding: 0; background: var(--line); }
-  .ibox.karte canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: pan-x; }
+  .ibox.karte canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
   .ibox.karte .kz { position: absolute; right: 8px; bottom: 22px; display: flex; flex-direction: column; gap: 8px; z-index: 3; }
   .ibox.karte .kz button { width: 54px; height: 54px; min-height: 0; margin: 0; padding: 0; border-radius: 12px; font-size: 32px; font-weight: 800;
     line-height: 1; background: rgba(255,255,255,.92); color: #000; border: 1.5px solid rgba(0,0,0,.35); }
   .ibox.karte .kz button:disabled { opacity: .35; }
+  .ibox.karte .kz button.zmid { display: none; align-items: center; justify-content: center; }
+  .ibox.karte .kz button.zmid.an { display: flex; }
+  .ibox.karte .kz button.zmid svg { width: 30px; height: 30px; }
   .ibox.karte .kziel { position: absolute; left: 6px; right: 56px; top: 6px; z-index: 3; display: none; align-items: center; gap: 8px;
     background: rgba(255,255,255,.92); color: #000; border-radius: 10px; padding: 5px 10px; font-size: 18px; font-weight: 800;
     white-space: nowrap; overflow: hidden; font-variant-numeric: tabular-nums; }
@@ -287,6 +290,8 @@
   .sval:empty { display: none; }
   button.srow:focus-visible, button.sback:focus-visible { outline: 3px solid var(--info); outline-offset: -3px; }
   .sbody > .sgroup + button { margin-top: 0; }
+  #page-debug { padding-top: 0; }
+  .snavbar.dbgnav { margin: 0 -10px 4px; }
 </style>
 </head>
 <body>
@@ -332,6 +337,9 @@
       <div class="sgroup">
         <button type="button" class="srow" data-go="sv-gelaende"><span class="sico" style="--c:#16a34a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 20l6.5-11 4 6.5 2.5-3.5 6 8z"/></svg></span><span class="stxt">Gelände und Karten offline</span><span class="sval"></span></button>
         <button type="button" class="srow" data-go="sv-app"><span class="sico" style="--c:#6b7280"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></svg></span><span class="stxt">App</span><span class="sval" id="sumVer"></span></button>
+      </div>
+      <div class="sgroup">
+        <button type="button" class="srow" id="btnDebug"><span class="sico" style="--c:#475569"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="7" width="10" height="13" rx="5"/><path d="M9.5 7V5.5a2.5 2.5 0 0 1 5 0V7M12 11v9M3.5 13H7M17 13h3.5M4.5 8.5L7.5 10M19.5 8.5L16.5 10M4.5 18.5l3-1.5M19.5 18.5l-3-1.5"/></svg></span><span class="stxt">Debug</span><span class="sval"></span></button>
       </div>
     </div></div>
 
@@ -380,6 +388,7 @@
       <label class="hint" for="kAusrichtung">Ausrichtung</label>
       <select id="kAusrichtung"><option value="kurs">Kurs oben</option><option value="nord">Nord oben</option></select>
       <label class="chk"><input type="checkbox" id="kSpur"> Geflogene Spur zeigen</label>
+      <div class="field"><span>Verschobene Karte zurück zur Position nach (5–300 s)</span><input id="kRueck" type="number" inputmode="numeric" min="5" max="300" step="1"></div>
     </div></div>
 
     <div class="sview" id="sv-berech" data-title="Berechnung"><div class="sbody">
@@ -436,6 +445,7 @@
 
   <!-- ================= DEBUG ================= -->
   <section class="page scroll" id="page-debug">
+    <div class="snavbar dbgnav"><button type="button" class="sback" id="btnDebugZurueck" aria-label="Zurück zu Einstellungen"></button><span class="snt">Debug</span><span></span></div>
     <h2>Verbindung</h2>
     <div id="apiInfo" class="api">Prüfe Bluetooth-Schnittstelle …</div>
     <div class="grid">
@@ -518,7 +528,6 @@
 <nav id="tabs" class="tabbar">
   <button data-tab="start" aria-label="Start" title="Start"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 11L12 4l8.5 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5.5h4V20"/></svg></button>
   <button data-tab="einst" aria-label="Einstellungen" title="Einstellungen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
-  <button data-tab="debug" aria-label="Debug" title="Debug"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="7" width="10" height="13" rx="5"/><path d="M9.5 7V5.5a2.5 2.5 0 0 1 5 0V7M12 11v9M3.5 13H7M17 13h3.5M4.5 8.5L7.5 10M19.5 8.5L16.5 10M4.5 18.5l3-1.5M19.5 18.5l-3-1.5"/></svg></button>
 </nav>
 <nav id="ftabs" class="tabbar">
   <button data-fp="0">Gleiten</button>
@@ -1322,7 +1331,7 @@ function handleLine(line, key) {
 /* =====================================================================
    FLUG-ANZEIGE
    ===================================================================== */
-const APP_VERSION = "2026-11-24.8";
+const APP_VERSION = "2026-11-24.9";
 const STALE_MS = 2000;          // ohne neue Daten länger als das → „keine Daten“
 const HOLD_MS = 2000;           // ein Messwert gilt höchstens so lange (Lücken zählen nicht)
 const MIN_COVERAGE = 0.9;       // Fenster gilt als gefüllt ab 90 % Abdeckung
@@ -2045,17 +2054,17 @@ function refitAll() { for (const pid in pageRefs) for (const r of pageRefs[pid])
 window.addEventListener("resize", () => setTimeout(refitAll, 50));
 
 /* ---------- Seiten und Flugmodus ---------- */
-const TABS = ["start", "einst", "debug", "fly"];
+const TABS = ["start", "einst", "debug", "fly"];   // "debug" nur über Einstellungen → Debug erreichbar
 let activeTab = lsGet("flugapp.tab");
-if (!["start", "einst", "debug"].includes(activeTab)) activeTab = "start";
+if (!["start", "einst"].includes(activeTab)) activeTab = "start";
 let flyIndex = 0;
 function showTab(t) {
   if (t === "fly" && !rec.active) t = "start";   // Fluganzeige nur während eines Flugs
   activeTab = t;
-  if (t !== "fly") lsSet("flugapp.tab", t);
+  if (t === "start" || t === "einst") lsSet("flugapp.tab", t);
   for (const id of TABS) $("page-" + id).classList.toggle("active", id === t);
   document.body.classList.toggle("flying", t === "fly");
-  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === (t === "debug" ? "einst" : t)));
   if (t === "fly") requestAnimationFrame(() => { const sw = $("swiper"); sw.scrollLeft = flyIndex * sw.clientWidth; markFlyTab(); refitAll(); });
   if (t === "debug") { refreshSessions(); rawEl.scrollTop = rawEl.scrollHeight; }
   if (t === "einst") buildKarteSettingsUI();
@@ -2079,6 +2088,8 @@ document.querySelectorAll("#tabs button").forEach(b => b.addEventListener("click
 }));
 document.querySelectorAll("#ftabs button[data-fp]").forEach(b => b.addEventListener("click", () => goFlyPage(+b.dataset.fp)));
 $("btnMenu").addEventListener("click", () => showTab("start"));
+$("btnDebug").addEventListener("click", () => showTab("debug"));
+$("btnDebugZurueck").addEventListener("click", () => showTab("einst"));
 
 /* Automatischer Seitenwechsel Gleiten ↔ Thermik: nur beim Wechsel der Phase (Wischen bleibt bis zum nächsten Wechsel gültig).
    Nach der Thermik zurück auf die Seite vor dem Kreisen (z. B. „Karte“), sonst auf „Gleiten“.
@@ -2283,6 +2294,7 @@ $("btnResetMax").addEventListener("click", () => { maxAlt = null; });
 const setStack = ["sv-root"];
 const CHEV_LINKS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>';
 function setNavInit() {
+  $("btnDebugZurueck").innerHTML = CHEV_LINKS + '<span class="sback-txt">Einstellungen</span>';   // Debug-Seite: gleiche Zurück-Leiste
   document.querySelectorAll("#page-einst .sview:not(#sv-root)").forEach(v => {
     const bar = document.createElement("div");
     bar.className = "snavbar";
@@ -2915,6 +2927,7 @@ function normalisiereKarte(s) {
     ausrichtung: s.ausrichtung === "nord" ? "nord" : "kurs",
     spur: s.spur === undefined ? true : !!s.spur,
     offlineZoom: clampInt(s.offlineZoom, 12, 15, 14),
+    rueckS: clampInt(s.rueckS, 5, 300, 20),   // verschobene Karte: nach so vielen Sekunden ohne Berührung zurück zur Position
     zoom: { topo: zoom("topo"), luft: zoom("luft") },
     wegpunkte: (Array.isArray(s.wegpunkte) ? s.wegpunkte : []).map(punkt).filter(Boolean).slice(0, 200),
     ziel: punkt(s.ziel),
@@ -3129,26 +3142,98 @@ function karteKasten(pid, id, ebene) {
   el.className = "ibox karte";
   el.dataset.cat = "move";
   el.innerHTML = `<canvas></canvas><div class="kziel"><span class="zw"></span><span class="zn"></span><button type="button" class="zr">Rückgängig</button></div>
-    <div class="kmsg"></div><div class="kz"><button type="button" class="zin" aria-label="Hineinzoomen">+</button><button type="button" class="zout" aria-label="Herauszoomen">−</button></div>`;
+    <div class="kmsg"></div><div class="kz"><button type="button" class="zmid" aria-label="Zurück zur eigenen Position"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg></button><button type="button" class="zin" aria-label="Hineinzoomen">+</button><button type="button" class="zout" aria-label="Herauszoomen">−</button></div>`;
   const q = (s) => el.querySelector(s);
   const r = { id, pid, karte: ebene, el, cv: q("canvas"), zbar: q(".kziel"), zw: q(".zw"), zn: q(".zn"), zr: q(".zr"), msg: q(".kmsg"),
-              zin: q(".zin"), zout: q(".zout"), sig: "", ansicht: null, druck: null, lastCls: "", lastMsg: null, lastZiel: null };
+              zin: q(".zin"), zout: q(".zout"), zmid: q(".zmid"), sig: "", ansicht: null, druck: null, lastCls: "", lastMsg: null, lastZiel: null,
+              frei: null, zeiger: new Map() };
   r.ctx = r.cv.getContext("2d");
-  r.zin.addEventListener("click", () => karteZoom(ebene, +1));
-  r.zout.addEventListener("click", () => karteZoom(ebene, -1));
+  const zoomKnopf = (dz) => {
+    if (r.frei) { karteFreiZoom(r, dz, r.frei.ax, r.frei.ay); r.frei.t = performance.now(); karteZeichnenBald(); }
+    else karteZoom(ebene, dz);
+  };
+  r.zin.addEventListener("click", () => zoomKnopf(+1));
+  r.zout.addEventListener("click", () => zoomKnopf(-1));
+  r.zmid.addEventListener("click", () => { r.frei = null; render(); });
   r.zr.addEventListener("click", () => { if (!zielRueck) return; karteSet.ziel = zielRueck.ziel; zielRueck = null; saveKarte(); karteNeu(); render(); });
   const abbruch = () => { if (r.druck) { clearTimeout(r.druck.timer); r.druck = null; } };
+  // Ein Finger: verschieben (langes Drücken ohne Bewegung setzt das Ziel). Zwei Finger: zoomen und verschieben.
+  let zieht = false, pinchD = 0;
+  const lokal = (e) => { const rect = r.cv.getBoundingClientRect(); return { x: e.clientX - rect.left, y: e.clientY - rect.top }; };
+  const zweiPunkte = () => { const [a, b] = [...r.zeiger.values()]; return { mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2, d: Math.hypot(a.x - b.x, a.y - b.y) }; };
   r.cv.addEventListener("pointerdown", (e) => {
+    try { r.cv.setPointerCapture(e.pointerId); } catch (err) {}
+    const p = lokal(e);
+    r.zeiger.set(e.pointerId, p);
     abbruch();
-    const rect = r.cv.getBoundingClientRect(), x = e.clientX - rect.left, y = e.clientY - rect.top;
-    r.druck = { x: e.clientX, y: e.clientY, timer: setTimeout(() => { r.druck = null; karteZielSetzen(r, x, y); }, 700) };
+    if (r.zeiger.size === 1) {
+      zieht = false;
+      r.druck = { x: p.x, y: p.y, timer: setTimeout(() => { r.druck = null; if (!zieht) karteZielSetzen(r, p.x, p.y); }, 700) };
+    } else { zieht = true; pinchD = zweiPunkte().d; }
   });
-  r.cv.addEventListener("pointermove", (e) => { if (r.druck && Math.hypot(e.clientX - r.druck.x, e.clientY - r.druck.y) > 12) abbruch(); });
-  for (const n of ["pointerup", "pointercancel", "pointerleave"]) r.cv.addEventListener(n, abbruch);
+  r.cv.addEventListener("pointermove", (e) => {
+    const alt = r.zeiger.get(e.pointerId);
+    if (!alt) return;
+    const neu = lokal(e);
+    if (r.zeiger.size === 1) {
+      if (!zieht) {
+        if (!r.druck || Math.hypot(neu.x - r.druck.x, neu.y - r.druck.y) <= 12) return;
+        abbruch(); zieht = true;
+      }
+      r.zeiger.set(e.pointerId, neu);
+      if (karteFreiStart(r)) karteFreiSchieben(r, alt.x, alt.y, neu.x, neu.y);
+    } else {
+      const vor = zweiPunkte();
+      r.zeiger.set(e.pointerId, neu);
+      const nach = zweiPunkte();
+      if (!karteFreiStart(r)) return;
+      karteFreiSchieben(r, vor.mx, vor.my, nach.mx, nach.my);
+      // Zoomstufen sind ganzzahlig: eine Stufe je Faktor √2 im Fingerabstand
+      if (pinchD > 0 && nach.d / pinchD >= Math.SQRT2) { karteFreiZoom(r, +1, nach.mx, nach.my); pinchD = nach.d; }
+      else if (pinchD > 0 && nach.d / pinchD <= Math.SQRT1_2) { karteFreiZoom(r, -1, nach.mx, nach.my); pinchD = nach.d; }
+    }
+    if (r.frei) r.frei.t = performance.now();
+    karteZeichnenBald();
+  });
+  const los = (e) => {
+    r.zeiger.delete(e.pointerId);
+    if (!r.zeiger.size || zieht) abbruch();
+    if (r.zeiger.size === 2) pinchD = zweiPunkte().d;
+    if (r.frei) r.frei.t = performance.now();
+  };
+  for (const n of ["pointerup", "pointercancel"]) r.cv.addEventListener(n, los);
   r.cv.addEventListener("contextmenu", (e) => e.preventDefault());
   r.abbruch = abbruch;
   return r;
 }
+/* Von Hand verschobene Karte: r.frei = {lat, lon (Kartenpunkt am Bildpunkt ax/ay), z, rot (fest), ax, ay, t (letzte Berührung)}.
+   Nach karteSet.rueckS Sekunden ohne Berührung zurück auf die eigene Position und die eingestellte Zoomstufe. */
+function karteFreiStart(r) {
+  if (!r.frei && r.ansicht) {
+    const v = r.ansicht, m = Karte.ausWelt(v.cx, v.cy, v.z);
+    r.frei = { lat: m.lat, lon: m.lon, z: v.z, rot: v.rot, ax: v.ax, ay: v.ay, t: performance.now() };
+  }
+  return r.frei;
+}
+function karteFreiAnsicht(f) { const c = Karte.zuWelt(f.lat, f.lon, f.z); return { z: f.z, cx: c.x, cy: c.y, ax: f.ax, ay: f.ay, rot: f.rot }; }
+// Der Kartenpunkt unter (vonX, vonY) wandert nach (nachX, nachY)
+function karteFreiSchieben(r, vonX, vonY, nachX, nachY) {
+  const f = r.frei, v = karteFreiAnsicht(f), a = Karte.bildZuWelt(v, vonX, vonY), b = Karte.bildZuWelt(v, nachX, nachY);
+  const m = Karte.ausWelt(v.cx + a.x - b.x, v.cy + a.y - b.y, f.z);
+  f.lat = m.lat; f.lon = m.lon;
+}
+// dz Zoomstufen; der Kartenpunkt unter (px, py) bleibt stehen
+function karteFreiZoom(r, dz, px, py) {
+  const f = r.frei, E = Karte.EBENEN[r.karte], nz = Math.max(E.zoomMin, Math.min(E.zoomMax, f.z + dz));
+  if (nz === f.z) return;
+  const w = Karte.bildZuWelt(karteFreiAnsicht(f), px, py), p = Karte.ausWelt(w.x, w.y, f.z);
+  f.z = nz;
+  const v = karteFreiAnsicht(f), soll = Karte.zuWelt(p.lat, p.lon, nz), ist = Karte.bildZuWelt(v, px, py);
+  const m = Karte.ausWelt(v.cx + soll.x - ist.x, v.cy + soll.y - ist.y, nz);
+  f.lat = m.lat; f.lon = m.lon;
+}
+let karteRaf = 0;
+function karteZeichnenBald() { if (!karteRaf) karteRaf = requestAnimationFrame(() => { karteRaf = 0; render(); }); }
 function karteAbbauen(r) { if (r.abbruch) r.abbruch(); }
 function karteNeu() { for (const pid in pageRefs) for (const r of pageRefs[pid]) if (r.karte) r.sig = ""; }
 function karteZoom(ebene, d) {
@@ -3171,18 +3256,20 @@ function karteZielSetzen(r, x, y) {
 function renderKarte(r, now, noData) {
   const zeigeMsg = (t) => { if (t !== r.lastMsg) { r.msg.textContent = t || ""; r.msg.className = "kmsg" + (t ? " an" : ""); r.lastMsg = t; } };
   if (!KARTE_OK) { zeigeMsg("Karte nicht geladen"); return; }
+  if (r.frei && !r.zeiger.size && performance.now() - r.frei.t > karteSet.rueckS * 1000) r.frei = null;   // zurück zur eigenen Position
   const sw = $("swiper"), stelle = sw.scrollLeft / Math.max(1, sw.clientWidth);
   if (Math.abs(PAGE_IDS.indexOf(r.pid) - stelle) >= 1) return;   // Seite gerade nicht sichtbar
   const W = r.cv.clientWidth, H = r.cv.clientHeight;
   if (!W || !H) return;
   const dpr = Math.min(3, window.devicePixelRatio || 1);
   if (r.cv.width !== Math.round(W * dpr) || r.cv.height !== Math.round(H * dpr)) { r.cv.width = Math.round(W * dpr); r.cv.height = Math.round(H * dpr); r.sig = ""; }
-  const ebene = r.karte, z = karteSet.zoom[ebene], E = Karte.EBENEN[ebene];
+  const ebene = r.karte, fr = r.frei, z = fr ? fr.z : karteSet.zoom[ebene], E = Karte.EBENEN[ebene];
   const p = kflug.pos, frisch = !!p && now - kflug.posT <= STALE_MS;
   const ziel = karteSet.ziel, dunkel = document.documentElement.getAttribute("data-theme") === "dark";
   const kartenKurs = karteSet.ausrichtung === "kurs" ? kflug.kartenKurs : null;
   const sig = [W, H, dpr, z, p ? p.lat.toFixed(6) + "," + p.lon.toFixed(6) : "-", kflug.kurs, kartenKurs, karteSet.ausrichtung, kk.version,
-               kflug.version, karteSet.spur, ziel ? ziel.lat + "," + ziel.lon : "-", dunkel].join("|");
+               kflug.version, karteSet.spur, ziel ? ziel.lat + "," + ziel.lon : "-", dunkel,
+               fr ? [fr.lat, fr.lon, fr.rot, fr.ax, fr.ay].join(",") : "-"].join("|");
   if (sig !== r.sig) {
     r.sig = sig;
     const erg = Karte.zeichne(r.ctx, {
@@ -3190,6 +3277,7 @@ function renderKarte(r, now, noData) {
       spur: karteSet.spur ? kflug.spur : null, ziel,
       thermiken: ebene === "topo" ? kflug.thermiken.filter(t => t === kflug.aktTh || t.gewinn >= THERMIK_MIN_M) : [],
       farben: KARTE_FARBEN[dunkel ? "dunkel" : "hell"], dunkel,
+      frei: fr ? { lat: fr.lat, lon: fr.lon, rot: fr.rot, ax: fr.ax, ay: fr.ay } : null,
     });
     r.ansicht = erg.ansicht; r.fehlend = erg.fehlend;
   }
@@ -3215,12 +3303,14 @@ function renderKarte(r, now, noData) {
   }
   if (r.zin.disabled !== (z >= E.zoomMax)) r.zin.disabled = z >= E.zoomMax;
   if (r.zout.disabled !== (z <= E.zoomMin)) r.zout.disabled = z <= E.zoomMin;
+  if (r.zmid.classList.contains("an") !== !!fr) r.zmid.classList.toggle("an", !!fr);
 }
 
 /* ---------- Einstellungen: Ziel, Wegpunkte, Ausrichtung, Spur, Offline-Zoom ---------- */
 function buildKarteSettingsUI() {
   $("kAusrichtung").value = karteSet.ausrichtung;
   $("kSpur").checked = karteSet.spur;
+  if (document.activeElement !== $("kRueck")) $("kRueck").value = String(karteSet.rueckS);
   $("kOfflineZoom").value = String(karteSet.offlineZoom);
   if (!KARTE_OK) { setText("kZiel", "karte.js nicht geladen"); return; }
   const z = karteSet.ziel;
@@ -3272,6 +3362,10 @@ $("btnWpHier").addEventListener("click", async () => {
 });
 $("kAusrichtung").addEventListener("change", (e) => { e.stopPropagation(); karteSet.ausrichtung = $("kAusrichtung").value === "nord" ? "nord" : "kurs"; saveKarte(); });
 $("kSpur").addEventListener("change", (e) => { e.stopPropagation(); karteSet.spur = $("kSpur").checked; saveKarte(); });
+$("kRueck").addEventListener("change", (e) => {
+  e.stopPropagation();
+  karteSet.rueckS = clampInt($("kRueck").value, 5, 300, karteSet.rueckS); $("kRueck").value = String(karteSet.rueckS); saveKarte();
+});
 $("kOfflineZoom").addEventListener("change", (e) => { e.stopPropagation(); karteSet.offlineZoom = clampInt($("kOfflineZoom").value, 12, 15, 14); saveKarte(); });
 
 /* =====================================================================

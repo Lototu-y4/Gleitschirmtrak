@@ -192,7 +192,8 @@
        ausrichtung: "kurs"|"nord",
        kachel(ebene, z, x, y, nurNachsehen) → Bild oder null (fehlende Kacheln lädt die Funktion selbst nach, ausser nurNachsehen),
        spur: [{lat, lon}], thermiken: [{lat, lon, text}], ziel: {lat, lon} | null,
-       farben: {hinter, spur, pfeil, pfeilRand, ziel, thermik, text, textHinter}, dunkel: bool
+       farben: {hinter, spur, pfeil, pfeilRand, ziel, thermik, text, textHinter}, dunkel: bool,
+       frei: {lat, lon, rot, ax, ay} | null   (von Hand verschoben: dieser Kartenpunkt liegt am Bildpunkt ax/ay, Drehung fest)
      }
      Gibt die Ansicht zurück (für bildZuWelt beim langen Drücken) und ob Kacheln gefehlt haben.
      ===================================================================== */
@@ -200,10 +201,12 @@
     const W = d.breite, H = d.hoehe, f = d.farben;
     ctx.setTransform(d.dpr, 0, 0, d.dpr, 0, 0);
     ctx.fillStyle = f.hinter; ctx.fillRect(0, 0, W, H);
-    const pos = d.pos || MITTE_CH;
+    const pos = d.pos || MITTE_CH, fr = d.frei || null;
     const kursOben = d.ausrichtung === "kurs" && d.pos && Number.isFinite(d.kartenKurs);
-    const c = zuWelt(pos.lat, pos.lon, d.z);
-    const v = { z: d.z, cx: c.x, cy: c.y, ax: W / 2, ay: kursOben ? H * 0.62 : H / 2, rot: kursOben ? d.kartenKurs : 0 };
+    const c = zuWelt(pos.lat, pos.lon, d.z);   // eigene Position
+    const mitte = fr || pos;
+    const v = fr ? (() => { const m = zuWelt(fr.lat, fr.lon, d.z); return { z: d.z, cx: m.x, cy: m.y, ax: fr.ax, ay: fr.ay, rot: fr.rot || 0 }; })()
+                 : { z: d.z, cx: c.x, cy: c.y, ax: W / 2, ay: kursOben ? H * 0.62 : H / 2, rot: kursOben ? d.kartenKurs : 0 };
 
     // Kacheln (fehlende: gröbere Stufe vergrössert zeigen, bis zu 5 Stufen zurück)
     const E = EBENEN[d.ebene];
@@ -268,8 +271,9 @@
     }
 
     // eigene Position: Pfeil (zeigt in Flugrichtung), ohne Kurs ein Punkt
-    if (d.pos) {
-      ctx.save(); ctx.translate(v.ax, v.ay);
+    const pb = weltZuBild(v, c.x, c.y);
+    if (d.pos && pb.x > -30 && pb.y > -30 && pb.x < W + 30 && pb.y < H + 30) {
+      ctx.save(); ctx.translate(pb.x, pb.y);
       if (Number.isFinite(d.kurs)) {
         ctx.rotate((d.kurs - v.rot) * RAD);
         ctx.beginPath(); ctx.moveTo(0, -17); ctx.lineTo(12, 13); ctx.lineTo(0, 6); ctx.lineTo(-12, 13); ctx.closePath();
@@ -290,7 +294,7 @@
     }
 
     // Massstab unten links, Quelle unten rechts
-    const ms = massstab(meterProPixel(pos.lat, d.z), Math.min(120, W * 0.3));
+    const ms = massstab(meterProPixel(mitte.lat, d.z), Math.min(120, W * 0.3));
     ctx.fillStyle = f.textHinter; ctx.fillRect(6, H - 26, ms.px + 12, 20);
     ctx.fillStyle = f.text; ctx.fillRect(12, H - 12, ms.px, 3); ctx.fillRect(12, H - 17, 2, 8); ctx.fillRect(12 + ms.px - 2, H - 17, 2, 8);
     ctx.font = "700 11px -apple-system, sans-serif"; ctx.textBaseline = "alphabetic"; ctx.fillText(ms.text, 16, H - 15);
