@@ -186,6 +186,17 @@
   .ibox.karte .kmsg { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; display: none;
     background: var(--flag-bg); color: #000; font-size: 15px; font-weight: 800; padding: 4px 12px; border-radius: 999px; white-space: nowrap; }
   .ibox.karte .kmsg.an { display: block; }
+  :is(.ibox.karte, .lbkarte) .kl { position: absolute; left: 8px; bottom: 34px; z-index: 3; width: 50px; height: 50px; min-height: 0; margin: 0; padding: 0;
+    border-radius: 12px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.92); color: #000; border: 1.5px solid rgba(0,0,0,.35); }
+  :is(.ibox.karte, .lbkarte) .kl svg { width: 28px; height: 28px; }
+  :is(.ibox.karte, .lbkarte) .kpanel { position: absolute; inset: 6px; z-index: 5; display: none; flex-direction: column; background: var(--card); color: var(--text);
+    border-radius: 12px; border: 1.5px solid var(--line); padding: 6px 12px 8px; overflow-y: auto; touch-action: pan-y; overscroll-behavior: contain; }
+  :is(.ibox.karte, .lbkarte) .kpanel.an { display: flex; }
+  :is(.ibox.karte, .lbkarte) .kpanel .kph { display: flex; align-items: center; justify-content: space-between; font-size: 17px; font-weight: 800; }
+  :is(.ibox.karte, .lbkarte) .kpanel .kph button { width: 46px; height: 46px; min-height: 0; margin: 0 -6px 0 0; padding: 0; font-size: 22px; border-radius: 10px; }
+  :is(.ibox.karte, .lbkarte) .kpanel h4 { margin: 4px 0 0; font-size: 14px; color: var(--label); font-weight: 700; }
+  :is(.ibox.karte, .lbkarte) .kpanel label { display: flex; align-items: center; gap: 10px; min-height: 36px; font-size: 16px; font-weight: 650; }
+  :is(.ibox.karte, .lbkarte) .kpanel input { width: 24px; height: 24px; min-height: 0; margin: 0; accent-color: var(--info); flex: none; }
   .ibox.karte.stale { border-color: var(--warn); }
 
   /* ---------- Info-Seite: Flugphase als schmale Zeile über den Kästen ---------- */
@@ -331,6 +342,8 @@
   .lbkarte .kmsg { position: absolute; left: 8px; top: 8px; z-index: 2; display: none; background: var(--flag-bg); color: #000; font-size: 13px; font-weight: 800;
     padding: 3px 10px; border-radius: 999px; }
   .lbkarte .kmsg.an { display: block; }
+  #lbKarte .kl { width: 44px; height: 44px; bottom: 30px; border-radius: 10px; }
+  #lbKarte .kl svg { width: 24px; height: 24px; }
   .lbbaro { position: relative; height: 100px; margin-top: 6px; background: var(--card); border-radius: 12px; overflow: hidden; }
   .lbbaro canvas { width: 100%; height: 100%; display: block; touch-action: none; }
   .lbspiel { display: flex; gap: 8px; align-items: center; margin: 6px 0 12px; }
@@ -464,6 +477,9 @@
       <h2>Kartenansicht</h2>
       <label class="hint" for="kAusrichtung">Ausrichtung</label>
       <select id="kAusrichtung"><option value="kurs">Kurs oben</option><option value="nord">Nord oben</option></select>
+      <label class="hint" for="kGrund">Grundkarte (Seite „Karte“)</label>
+      <select id="kGrund"></select>
+      <div id="kUeber"></div>
       <label class="chk"><input type="checkbox" id="kSpur"> Geflogene Spur zeigen</label>
       <div class="field"><span>Verschobene Karte zurück zur Position nach (5–300 s)</span><input id="kRueck" type="number" inputmode="numeric" min="5" max="300" step="1"></div>
     </div></div>
@@ -499,7 +515,7 @@
         <button class="secondary" id="btnTerrLoad">Gebiet offline speichern</button>
         <button class="secondary" id="btnTerrStop" disabled>Abbrechen</button>
       </div>
-      <label class="hint" for="kOfflineZoom">Landeskarte offline speichern bis</label>
+      <label class="hint" for="kOfflineZoom">Grundkarte offline speichern bis</label>
       <select id="kOfflineZoom">
         <option value="12">Zoom 12 (1:150 000)</option>
         <option value="13">Zoom 13 (1:75 000)</option>
@@ -1436,7 +1452,7 @@ function handleLine(line, key) {
 /* =====================================================================
    FLUG-ANZEIGE
    ===================================================================== */
-const APP_VERSION = "2026-11-25.1";
+const APP_VERSION = "2026-11-25.3";
 const STALE_MS = 2000;          // ohne neue Daten länger als das → „keine Daten“
 const HOLD_MS = 2000;           // ein Messwert gilt höchstens so lange (Lücken zählen nicht)
 const MIN_COVERAGE = 0.9;       // Fenster gilt als gefüllt ab 90 % Abdeckung
@@ -3037,10 +3053,9 @@ function terrainDebugText() {
 const KARTE_OK = typeof Karte !== "undefined";
 if (!KARTE_OK) setTimeout(() => log("Karte nicht verfügbar: karte.js wurde nicht geladen (offline ohne Cache?). Die übrige Anzeige funktioniert.", "err"), 0);
 const KARTE_KEY = "flugapp.karte.v1";
-const KK_MEM_MAX = 120;            // so viele Kartenbilder bleiben im Speicher (je ~256 KB)
+const KK_MEM_MAX = 150;            // so viele Kartenbilder bleiben im Speicher (je ~256 KB)
 const KK_NETZ_PARALLEL = 4;        // gleichzeitige Downloads
 const KK_RETRY_MS = 30000;         // fehlgeschlagenes Kartenbild: so lange bis zum nächsten Versuch
-const KK_MB_TOPO = 0.03, KK_MB_LUFT = 0.13;   // geschätzte Grösse pro Bild (MB)
 const KK_MAX_MB = 250;             // „Gebiet offline speichern“: grösseres Gebiet wird abgelehnt
 const KK_FRAGEN_MB = 80;           // ab so viel neuen Daten vorher fragen
 const KURS_MIN_KMH = 8;            // darunter bleibt die Karte bei „Kurs oben“ stehen (Kurs unsicher)
@@ -3061,6 +3076,9 @@ function normalisiereKarte(s) {
   const zoom = (e) => { const E = KARTE_OK && Karte.EBENEN[e]; return E ? clampInt(z[e], E.zoomMin, E.zoomMax, E.zoomStandard) : 12; };
   return {
     ausrichtung: s.ausrichtung === "nord" ? "nord" : "kurs",
+    // Grundkarte und Überlagerungen der Seite „Karte“
+    grundkarte: KARTE_OK && Karte.GRUNDKARTEN.includes(s.grundkarte) ? s.grundkarte : "topo",
+    ueber: KARTE_OK && Array.isArray(s.ueber) ? Karte.UEBERLAGERUNGEN.filter(u => s.ueber.includes(u)) : [],
     spur: s.spur === undefined ? true : !!s.spur,
     offlineZoom: clampInt(s.offlineZoom, 12, 15, 14),
     rueckS: clampInt(s.rueckS, 5, 300, 20),   // verschobene Karte: nach so vielen Sekunden ohne Berührung zurück zur Position
@@ -3145,7 +3163,7 @@ async function kartenSpeichern(key, buf) {
   kk.stored.add(key);
 }
 async function bildAus(buf, ebene) {
-  const blob = new Blob([buf], { type: ebene === "luft" ? "image/png" : "image/jpeg" });
+  const blob = new Blob([buf], { type: Karte.EBENEN[ebene] && Karte.EBENEN[ebene].ext === "png" ? "image/png" : "image/jpeg" });
   if (typeof createImageBitmap === "function") return await createImageBitmap(blob);
   const url = URL.createObjectURL(blob);
   try { const img = new Image(); img.src = url; await img.decode(); return img; } finally { URL.revokeObjectURL(url); }
@@ -3185,14 +3203,16 @@ async function kartenLaden(key, ebene, z, x, y) {
 /* ---------- Karten offline speichern (Teil von „Gebiet offline speichern“, gleicher Radius) ---------- */
 async function kartenDownload(c, src) {
   if (!KARTE_OK || kk.job) return;
-  const radius = settings.terrRadius * 1000, E = Karte.EBENEN;
+  const radius = settings.terrRadius * 1000, E = Karte.EBENEN, grund = karteSet.grundkarte;
+  const umkreis = (e, zBis) => Karte.kachelnUmkreis(c.lat, c.lon, radius, E.topo.zoomMin, Math.min(zBis, E[e].zMax)).map(t => Object.assign(t, { e }));
   const liste = [
-    ...Karte.kachelnUmkreis(c.lat, c.lon, radius, E.topo.zoomMin, karteSet.offlineZoom).map(t => Object.assign(t, { e: "topo" })),
+    ...umkreis(grund, karteSet.offlineZoom),
+    ...karteSet.ueber.flatMap(u => umkreis(u, karteSet.offlineZoom)),
     ...Karte.kachelnUmkreis(c.lat, c.lon, radius, E.luft.zoomMin, E.luft.zMax).map(t => Object.assign(t, { e: "luft" })),
   ];
   if (!liste.length) { kk.jobMsg = "ausserhalb der Schweiz – keine Karten"; return; }
-  // Grösse schätzen (gemessen: Landeskarte ~30 KB, Segelflugkarte ~130 KB pro Bild); kein Download der ganzen Schweiz
-  const mbVon = (l) => l.reduce((s, t) => s + (t.e === "luft" ? KK_MB_LUFT : KK_MB_TOPO), 0);
+  // Grösse schätzen (gemessen, siehe Karte.EBENEN[…].mb, z. B. Landeskarte ~30 KB, Segelflugkarte ~130 KB pro Bild); kein Download der ganzen Schweiz
+  const mbVon = (l) => l.reduce((s, t) => s + E[t.e].mb, 0);
   const mbGebiet = mbVon(liste);
   if (mbGebiet > KK_MAX_MB) {
     kk.jobMsg = "zu gross: " + liste.length + " Bilder, ca. " + Math.round(mbGebiet) + " MB (höchstens " + KK_MAX_MB + " MB) – Radius oder Zoom verkleinern";
@@ -3217,7 +3237,8 @@ async function kartenDownload(c, src) {
   kk.job = null; kk.failed.clear(); kk.speicherZeit = -1e12;
   kk.jobMsg = ((job.stop || gebietStop) && job.done < job.total ? "abgebrochen: " : "fertig: ") + (job.done - job.errors) + " neu ("
     + (job.bytes / 1e6).toFixed(1) + " MB), " + (liste.length - job.total) + " schon vorhanden" + (job.errors ? ", " + job.errors + " Fehler (" + job.lastErr + ")" : "")
-    + " · Landeskarte bis Zoom " + karteSet.offlineZoom + ", Segelflugkarte bis " + E.luft.zMax + " · " + settings.terrRadius + " km (" + src + ")";
+    + " · " + E[grund].name + (karteSet.ueber.length ? " mit " + karteSet.ueber.map(u => E[u].name).join(", ") : "") + " bis Zoom " + karteSet.offlineZoom
+    + ", Segelflugkarte bis " + E.luft.zMax + " · " + settings.terrRadius + " km (" + src + ")";
   if (job.errors) log("Karten-Download: " + job.errors + " Fehler, zuletzt: " + job.lastErr, "err");
 }
 $("btnKarteClear").addEventListener("click", async () => {
@@ -3284,6 +3305,7 @@ function karteKasten(pid, id, ebene) {
               zin: q(".zin"), zout: q(".zout"), zmid: q(".zmid"), sig: "", ansicht: null, druck: null, lastCls: "", lastMsg: null, lastZiel: null,
               frei: null, zeiger: new Map() };
   r.ctx = r.cv.getContext("2d");
+  if (ebene === "topo") r.panel = karteEbenenAuswahl(r.el, r.pid, () => { if (r.frei) r.frei.t = performance.now(); });
   const zoomKnopf = (dz) => {
     if (r.frei) { karteFreiZoom(r, dz, r.frei.ax, r.frei.ay); r.frei.t = performance.now(); karteZeichnenBald(); }
     else karteZoom(ebene, dz);
@@ -3342,6 +3364,31 @@ function karteKasten(pid, id, ebene) {
   r.abbruch = abbruch;
   return r;
 }
+/* Auswahl von Grundkarte und Überlagerungen direkt auf der Karte (Knopf unten links).
+   Gilt für die Seite „Karte“ und die Logbuch-Karte; die Wahl ist dieselbe (karteSet.grundkarte / .ueber). */
+const EBENEN_SYMBOL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 16.5l9 5 9-5"/></svg>';
+function karteEbenenAuswahl(host, name, beimOeffnen) {
+  if (!KARTE_OK) return;
+  const E = Karte.EBENEN;
+  const knopf = document.createElement("button");
+  knopf.type = "button"; knopf.className = "kl"; knopf.setAttribute("aria-label", "Karte wählen"); knopf.innerHTML = EBENEN_SYMBOL;
+  const panel = document.createElement("div");
+  panel.className = "kpanel";
+  panel.innerHTML = `<div class="kph"><span>Karte</span><button type="button" class="secondary" aria-label="Schliessen">✕</button></div><h4>Grundkarte</h4>${Karte.GRUNDKARTEN.map(g => `<label><input type="radio" name="kg-${name}" value="${g}">${esc(E[g].name)}</label>`).join("")}
+    <h4>Darüber</h4>${Karte.UEBERLAGERUNGEN.map(u => `<label><input type="checkbox" value="${u}">${esc(E[u].name)}</label>`).join("")}`;
+  const abgleichen = () => panel.querySelectorAll("input").forEach(i => { i.checked = i.type === "radio" ? i.value === karteSet.grundkarte : karteSet.ueber.includes(i.value); });
+  knopf.addEventListener("click", () => { abgleichen(); panel.classList.add("an"); if (beimOeffnen) beimOeffnen(); });
+  panel.querySelector("button").addEventListener("click", () => panel.classList.remove("an"));
+  panel.addEventListener("change", (e) => {
+    const i = e.target;
+    if (i.type === "radio") karteSet.grundkarte = i.value;
+    else karteSet.ueber = Karte.UEBERLAGERUNGEN.filter(u => u === i.value ? i.checked : karteSet.ueber.includes(u));
+    saveKarte(); karteNeu(); render(); fbZeichnen();
+  });
+  host.appendChild(knopf); host.appendChild(panel);
+  return panel;
+}
+
 /* Von Hand verschobene Karte: r.frei = {lat, lon (Kartenpunkt am Bildpunkt ax/ay), z, rot (fest), ax, ay, t (letzte Berührung)}.
    Nach karteSet.rueckS Sekunden ohne Berührung zurück auf die eigene Position und die eingestellte Zoomstufe. */
 function karteFreiStart(r) {
@@ -3399,17 +3446,18 @@ function renderKarte(r, now, noData) {
   if (!W || !H) return;
   const dpr = Math.min(3, window.devicePixelRatio || 1);
   if (r.cv.width !== Math.round(W * dpr) || r.cv.height !== Math.round(H * dpr)) { r.cv.width = Math.round(W * dpr); r.cv.height = Math.round(H * dpr); r.sig = ""; }
-  const ebene = r.karte, fr = r.frei, z = fr ? fr.z : karteSet.zoom[ebene], E = Karte.EBENEN[ebene];
+  const ebene = r.karte, fr = r.frei, z = fr ? fr.z : karteSet.zoom[ebene], E = Karte.EBENEN[ebene];   // Zoomgrenzen der Seite
+  const grund = ebene === "topo" ? karteSet.grundkarte : ebene, ueber = ebene === "topo" ? karteSet.ueber : [];
   const p = kflug.pos, frisch = !!p && now - kflug.posT <= STALE_MS;
   const ziel = karteSet.ziel, dunkel = document.documentElement.getAttribute("data-theme") === "dark";
   const kartenKurs = karteSet.ausrichtung === "kurs" ? kflug.kartenKurs : null;
   const sig = [W, H, dpr, z, p ? p.lat.toFixed(6) + "," + p.lon.toFixed(6) : "-", kflug.kurs, kartenKurs, karteSet.ausrichtung, kk.version,
-               kflug.version, karteSet.spur, ziel ? ziel.lat + "," + ziel.lon : "-", dunkel,
+               kflug.version, karteSet.spur, ziel ? ziel.lat + "," + ziel.lon : "-", dunkel, grund, ueber.join(","),
                fr ? [fr.lat, fr.lon, fr.rot, fr.ax, fr.ay].join(",") : "-"].join("|");
   if (sig !== r.sig) {
     r.sig = sig;
     const erg = Karte.zeichne(r.ctx, {
-      ebene, z, breite: W, hoehe: H, dpr, pos: p, kurs: kflug.kurs, kartenKurs, ausrichtung: karteSet.ausrichtung, kachel: kartenKachel,
+      ebene: grund, ueber, z, breite: W, hoehe: H, dpr, pos: p, kurs: kflug.kurs, kartenKurs, ausrichtung: karteSet.ausrichtung, kachel: kartenKachel,
       spur: karteSet.spur ? kflug.spur : null, ziel,
       thermiken: ebene === "topo" ? kflug.thermiken.filter(t => t === kflug.aktTh || t.gewinn >= THERMIK_MIN_M) : [],
       farben: KARTE_FARBEN[dunkel ? "dunkel" : "hell"], dunkel,
@@ -3446,6 +3494,11 @@ function renderKarte(r, now, noData) {
 function buildKarteSettingsUI() {
   $("kAusrichtung").value = karteSet.ausrichtung;
   $("kSpur").checked = karteSet.spur;
+  if (KARTE_OK) {
+    const E = Karte.EBENEN;
+    $("kGrund").innerHTML = Karte.GRUNDKARTEN.map(g => `<option value="${g}"${g === karteSet.grundkarte ? " selected" : ""}>${esc(E[g].name)}</option>`).join("");
+    $("kUeber").innerHTML = Karte.UEBERLAGERUNGEN.map(u => `<label class="chk"><input type="checkbox" data-ueber="${u}"${karteSet.ueber.includes(u) ? " checked" : ""}> ${esc(E[u].name)}</label>`).join("");
+  }
   if (document.activeElement !== $("kRueck")) $("kRueck").value = String(karteSet.rueckS);
   $("kOfflineZoom").value = String(karteSet.offlineZoom);
   if (!KARTE_OK) { setText("kZiel", "karte.js nicht geladen"); return; }
@@ -3498,6 +3551,16 @@ $("btnWpHier").addEventListener("click", async () => {
 });
 $("kAusrichtung").addEventListener("change", (e) => { e.stopPropagation(); karteSet.ausrichtung = $("kAusrichtung").value === "nord" ? "nord" : "kurs"; saveKarte(); });
 $("kSpur").addEventListener("change", (e) => { e.stopPropagation(); karteSet.spur = $("kSpur").checked; saveKarte(); });
+$("kGrund").addEventListener("change", (e) => {
+  e.stopPropagation();
+  if (KARTE_OK && Karte.GRUNDKARTEN.includes($("kGrund").value)) { karteSet.grundkarte = $("kGrund").value; saveKarte(); karteNeu(); }
+});
+$("kUeber").addEventListener("change", (e) => {
+  e.stopPropagation();
+  if (!KARTE_OK) return;
+  const an = new Set([...$("kUeber").querySelectorAll("input:checked")].map(i => i.dataset.ueber));
+  karteSet.ueber = Karte.UEBERLAGERUNGEN.filter(u => an.has(u)); saveKarte(); karteNeu();
+});
 $("kRueck").addEventListener("change", (e) => {
   e.stopPropagation();
   karteSet.rueckS = clampInt($("kRueck").value, 5, 300, karteSet.rueckS); $("kRueck").value = String(karteSet.rueckS); saveKarte();
@@ -4172,6 +4235,7 @@ function fbKarteBedienung(d) {
   box.querySelector(".zout").onclick = () => { if (k.frei) { const c = zentrum(); fbKarteZoom(k, -1, c.x, c.y); fbZeichnen(); } };
   box.querySelector(".zfit").onclick = () => { k.frei = null; fbZeichnen(); };
   if (!KARTE_OK) return;
+  karteEbenenAuswahl(box, "lb", null);
   let zieht = false, pinchD = 0, start = null;
   const lokal = (e) => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
   const zwei = () => { const [a, b] = [...k.zeiger.values()]; return { mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2, d: Math.hypot(a.x - b.x, a.y - b.y) }; };
@@ -4250,14 +4314,14 @@ function fbKarteZeichnen(d) {
   if (k.cv.width !== Math.round(W * dpr) || k.cv.height !== Math.round(H * dpr)) { k.cv.width = Math.round(W * dpr); k.cv.height = Math.round(H * dpr); k.sig = ""; }
   if (!k.frei) { const a = Karte.passendeAnsicht(d.spur, W, H, FB_ZMIN, FB_ZMAX, 30); k.frei = { lat: a.lat, lon: a.lon, z: a.z }; }
   const dunkel = document.documentElement.getAttribute("data-theme") === "dark";
-  const i = d.idx, sig = [W, H, dpr, k.frei.lat, k.frei.lon, k.frei.z, i, kk.version, dunkel, d.routeTyp].join("|");
+  const i = d.idx, sig = [W, H, dpr, k.frei.lat, k.frei.lon, k.frei.z, i, kk.version, dunkel, d.routeTyp, karteSet.grundkarte, karteSet.ueber.join(",")].join("|");
   if (sig === k.sig) return;
   k.sig = sig;
   const p = d.P[i], v = d.V[i];
   let bis = 0;
   { let lo = 0, hi = d.spurIdx.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (d.spurIdx[m] <= i) lo = m; else hi = m - 1; } bis = lo; }
   Karte.zeichne(k.ctx, {
-    ebene: "topo", z: k.frei.z, breite: W, hoehe: H, dpr, pos: { lat: p.lat, lon: p.lon },
+    ebene: karteSet.grundkarte, ueber: karteSet.ueber, z: k.frei.z, breite: W, hoehe: H, dpr, pos: { lat: p.lat, lon: p.lon },
     kurs: v.geschw !== null && v.geschw * 3.6 >= PFEIL_MIN_KMH ? v.kurs : null, kartenKurs: null, ausrichtung: "nord", kachel: kartenKachel,
     spur: d.spur, spurOhnePos: true, spurBis: bis, route: fbRoute(d),
     thermiken: d.flug.werte.thermiken.liste.map(t => ({ lat: t.lat, lon: t.lon, text: "" })), ziel: null,

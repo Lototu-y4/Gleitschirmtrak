@@ -27,13 +27,26 @@
   const GEBIET = Object.freeze({ latMin: 45.72, latMax: 47.90, lonMin: 5.85, lonMax: 10.60 });
   const MITTE_CH = Object.freeze({ lat: 46.80, lon: 8.23 });
 
-  // Kartenebenen von wmts.geo.admin.ch (swisstopo, BAZL). zMax = höchste vorhandene Stufe, darüber wird vergrössert.
+  /* Kartenebenen von wmts.geo.admin.ch (swisstopo, BAZL, BAFU; Open Government Data, Quelle angeben).
+     zMax = höchste geladene Stufe, darüber wird vergrössert. zoomMin/zoomMax/zoomStandard gelten für die Seite:
+     „topo“ steht für die Seite „Karte“ (alle Grundkarten), „luft“ für die Seite „Luftraum“.
+     mb = geschätzte Grösse pro Bild (für „Gebiet offline speichern“), alpha = Deckkraft einer Überlagerung. */
   const EBENEN = Object.freeze({
-    topo: Object.freeze({ name: "Landeskarte", layer: "ch.swisstopo.pixelkarte-farbe", ext: "jpeg", zMin: 7, zMax: 16,
-                          zoomMin: 8, zoomMax: 15, zoomStandard: 12, quelle: "© swisstopo" }),
-    luft: Object.freeze({ name: "Segelflugkarte", layer: "ch.bazl.segelflugkarte", ext: "png", zMin: 6, zMax: 12,
-                          zoomMin: 8, zoomMax: 13, zoomStandard: 11, quelle: "© BAZL, swisstopo" }),
+    topo:   Object.freeze({ name: "Landeskarte farbig", layer: "ch.swisstopo.pixelkarte-farbe", ext: "jpeg", zMin: 7, zMax: 16,
+                            zoomMin: 8, zoomMax: 15, zoomStandard: 12, quelle: "© swisstopo", mb: 0.03 }),
+    grau:   Object.freeze({ name: "Landeskarte grau", layer: "ch.swisstopo.pixelkarte-grau", ext: "jpeg", zMin: 7, zMax: 16, quelle: "© swisstopo", mb: 0.03 }),
+    winter: Object.freeze({ name: "Landeskarte Winter", layer: "ch.swisstopo.pixelkarte-farbe-winter", ext: "jpeg", zMin: 7, zMax: 16, quelle: "© swisstopo", mb: 0.03 }),
+    bild:   Object.freeze({ name: "Luftbild (SWISSIMAGE)", layer: "ch.swisstopo.swissimage", ext: "jpeg", zMin: 7, zMax: 16, quelle: "© swisstopo", mb: 0.03 }),
+    relief: Object.freeze({ name: "Relief (ohne Beschriftung)", layer: "ch.swisstopo.swissalti3d-reliefschattierung", ext: "png", zMin: 7, zMax: 16, quelle: "© swisstopo", mb: 0.07 }),
+    luft:   Object.freeze({ name: "Segelflugkarte", layer: "ch.bazl.segelflugkarte", ext: "png", zMin: 6, zMax: 12,
+                            zoomMin: 8, zoomMax: 13, zoomStandard: 11, quelle: "© BAZL, swisstopo", mb: 0.13 }),
+    // Überlagerungen (durchsichtige PNG, nur auf der Seite „Karte“)
+    wrz:    Object.freeze({ name: "Wildruhezonen", layer: "ch.bafu.wrz-wildruhezonen_portal", ext: "png", zMin: 7, zMax: 16, quelle: "BAFU", mb: 0.005, alpha: 0.8, ueber: true }),
+    jagd:   Object.freeze({ name: "Eidg. Jagdbanngebiete", layer: "ch.bafu.bundesinventare-jagdbanngebiete", ext: "png", zMin: 7, zMax: 16, quelle: "BAFU", mb: 0.005, alpha: 0.7, ueber: true }),
+    hang:   Object.freeze({ name: "Hangneigung über 30°", layer: "ch.swisstopo.hangneigung-ueber_30", ext: "png", zMin: 7, zMax: 16, quelle: "swisstopo", mb: 0.01, alpha: 0.55, ueber: true }),
   });
+  const GRUNDKARTEN = Object.freeze(["topo", "grau", "winter", "bild", "relief"]);   // wählbar auf der Seite „Karte“
+  const UEBERLAGERUNGEN = Object.freeze(["wrz", "jagd", "hang"]);
   const kachelUrl = (ebene, z, x, y) => {
     const e = EBENEN[ebene];
     return `https://wmts.geo.admin.ch/1.0.0/${e.layer}/default/current/3857/${z}/${x}/${y}.${e.ext}`;
@@ -203,7 +216,7 @@
   /* =====================================================================
      Zeichnen (nur im Browser)
      daten = {
-       ebene, z, breite, hoehe (CSS-Pixel), dpr,
+       ebene (Grundkarte), ueber: [Überlagerungen] | null, z, breite, hoehe (CSS-Pixel), dpr,
        pos: {lat, lon} | null, kurs (Grad, Pfeil) | null, kartenKurs (Grad, oben bei "Kurs oben"; beim Kreisen festgehalten) | null,
        ausrichtung: "kurs"|"nord",
        kachel(ebene, z, x, y, nurNachsehen) → Bild oder null (fehlende Kacheln lädt die Funktion selbst nach, ausser nurNachsehen),
@@ -226,27 +239,16 @@
     const v = fr ? (() => { const m = zuWelt(fr.lat, fr.lon, d.z); return { z: d.z, cx: m.x, cy: m.y, ax: fr.ax, ay: fr.ay, rot: fr.rot || 0 }; })()
                  : { z: d.z, cx: c.x, cy: c.y, ax: W / 2, ay: kursOben ? H * 0.62 : H / 2, rot: kursOben ? d.kartenKurs : 0 };
 
-    // Kacheln (fehlende: gröbere Stufe vergrössert zeigen, bis zu 5 Stufen zurück)
+    // Kacheln: Grundkarte, darüber die Überlagerungen (fehlende: gröbere Stufe vergrössert zeigen, bis zu 6 Stufen zurück)
     const E = EBENEN[d.ebene];
-    let fehlend = 0;
+    const ueber = (d.ueber || []).filter(u => EBENEN[u] && EBENEN[u].ueber);
+    const kacheln = kachelnFuerAnsicht(v, W, H);
     ctx.save();
     ctx.translate(v.ax, v.ay); ctx.rotate(-v.rot * RAD); ctx.translate(-v.cx, -v.cy);
     ctx.imageSmoothingEnabled = true;
-    for (const k of kachelnFuerAnsicht(v, W, H)) {
-      let zq = Math.min(k.z, E.zMax), bild = null, s = 0;
-      for (; zq >= Math.max(E.zMin, k.z - 6); zq--) {
-        s = k.z - zq;
-        bild = d.kachel(d.ebene, zq, k.x >> s, k.y >> s, zq !== Math.min(k.z, E.zMax));   // gröbere Stufen nur nachsehen
-        if (bild) break;
-        if (zq === Math.min(k.z, E.zMax)) fehlend++;
-      }
-      const px = k.x * KACHEL, py = k.y * KACHEL;
-      if (bild) {
-        const t = KACHEL >> s, sx = (k.x - ((k.x >> s) << s)) * t, sy = (k.y - ((k.y >> s) << s)) * t;
-        // 0.5 px Überlappung gegen feine Fugen zwischen den Kacheln
-        ctx.drawImage(bild, sx, sy, t, t, px - 0.25, py - 0.25, KACHEL + 0.5, KACHEL + 0.5);
-      }
-    }
+    const fehlend = zeichneEbene(ctx, d, d.ebene, kacheln, 0.5);
+    for (const u of ueber) { ctx.globalAlpha = EBENEN[u].alpha; zeichneEbene(ctx, d, u, kacheln, 0); }
+    ctx.globalAlpha = 1;
     if (d.dunkel) { ctx.fillStyle = "rgba(0,0,0,0.22)"; ctx.fillRect(v.cx - 4 * W - 4 * H, v.cy - 4 * W - 4 * H, 8 * (W + H), 8 * (W + H)); }
 
     // Spur (Logbuch: spurOhnePos, und bis spurBis kräftig, danach blass)
@@ -349,11 +351,40 @@
     ctx.fillStyle = f.text; ctx.fillRect(12, H - 12, ms.px, 3); ctx.fillRect(12, H - 17, 2, 8); ctx.fillRect(12 + ms.px - 2, H - 17, 2, 8);
     ctx.font = "700 11px -apple-system, sans-serif"; ctx.textBaseline = "alphabetic"; ctx.fillText(ms.text, 16, H - 15);
     ctx.font = "600 10px -apple-system, sans-serif";
-    const q = E.quelle, qw = ctx.measureText(q).width;
+    const q = quellenText(d.ebene, ueber), qw = ctx.measureText(q).width;
     ctx.fillStyle = f.textHinter; ctx.fillRect(W - qw - 10, H - 16, qw + 8, 14);
     ctx.fillStyle = f.text; ctx.fillText(q, W - qw - 6, H - 5);
 
     return { ansicht: v, fehlend };
+  }
+  // Eine Ebene zeichnen (Transformation ist schon gesetzt). ueberlappung: Pixel gegen feine Fugen (Grundkarte),
+  // bei durchsichtigen Überlagerungen 0, sonst würden die Ränder doppelt deckend. Gibt die Zahl fehlender Kacheln zurück.
+  function zeichneEbene(ctx, d, ebene, kacheln, ueberlappung) {
+    const E = EBENEN[ebene], zOben = (z) => Math.min(z, E.zMax);
+    let fehlend = 0;
+    for (const k of kacheln) {
+      let zq = zOben(k.z), bild = null, s = 0;
+      for (; zq >= Math.max(E.zMin, k.z - 6); zq--) {
+        s = k.z - zq;
+        bild = d.kachel(ebene, zq, k.x >> s, k.y >> s, zq !== zOben(k.z));   // gröbere Stufen nur nachsehen
+        if (bild) break;
+        if (zq === zOben(k.z)) fehlend++;
+      }
+      if (!bild) continue;
+      const px = k.x * KACHEL, py = k.y * KACHEL, h = ueberlappung / 2;
+      const t = KACHEL >> s, sx = (k.x - ((k.x >> s) << s)) * t, sy = (k.y - ((k.y >> s) << s)) * t;
+      ctx.drawImage(bild, sx, sy, t, t, px - h, py - h, KACHEL + ueberlappung, KACHEL + ueberlappung);
+    }
+    return fehlend;
+  }
+  // Quellenangabe unten rechts: Grundkarte und die Stellen der Überlagerungen (ohne Doppelte)
+  function quellenText(ebene, ueber) {
+    const teile = [EBENEN[ebene].quelle];
+    for (const u of ueber || []) {
+      const q = EBENEN[u] && EBENEN[u].quelle;
+      if (q && !teile.some(t => t.includes(q))) teile.push(q);
+    }
+    return teile.join(", ");
   }
   function beschriftung(ctx, text, x, y, f) {
     const w = ctx.measureText(text).width;
@@ -362,7 +393,7 @@
   }
 
   return {
-    KACHEL, GEBIET, MITTE_CH, EBENEN, kachelUrl, kachelSchluessel,
+    KACHEL, GEBIET, MITTE_CH, EBENEN, GRUNDKARTEN, UEBERLAGERUNGEN, kachelUrl, kachelSchluessel, quellenText,
     lonZuX, latZuY, xZuLon, yZuLat, zuWelt, ausWelt, meterProPixel, imGebiet, gebietKacheln, kachelImGebiet,
     weltZuBild, bildZuWelt, kachelnFuerAnsicht, kachelnUmkreis,
     distanz, peilung, noetigeGleitzahl, wgs84ZuLv95, lv95ZuWgs84, leseKoordinaten, formatKoordinaten,

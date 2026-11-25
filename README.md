@@ -305,7 +305,7 @@ Die App speichert das Logbuch nur im Browser. Gesichert wird von Hand, in eine D
 - **Karte** (Landeskarte):
   - ganzer Track. Bis zur Zeitmarke ist er kräftig, danach blass.
   - Thermiken als Punkte, XContest-Route gestrichelt mit Wendepunkten. Antippen einer Zeile in der Tabelle „XContest-Wertung“ zeigt diese Art.
-  - Verschieben, Zoomen mit zwei Fingern oder + und −, ⤢ zeigt wieder den ganzen Flug. Antippen des Tracks setzt die Zeitmarke dorthin.
+  - Verschieben, Zoomen mit zwei Fingern oder + und −, ⤢ zeigt wieder den ganzen Flug. Antippen des Tracks setzt die Zeitmarke dorthin. Der Knopf unten links wählt Grundkarte und Ebenen (wie auf der Seite „Karte“).
   - Ausserhalb der Schweiz gibt es keine Kartenbilder, der Track steht auf neutralem Hintergrund.
 - **Höhenprofil:**
   - Thermiken orange hinterlegt, vor dem Start und nach der Landung grau.
@@ -335,7 +335,19 @@ Die App speichert das Logbuch nur im Browser. Gesichert wird von Hand, in eine D
 
 **Nur eine Orientierungshilfe, kein Navigationsgerät.** Die Segelflugkarte ist nur ein Bild: Die App kennt keine Luftraumgrenzen und warnt nicht. Massgebend sind die gültige Karte und die DABS.
 
-- **Seite „Karte“:** grosse Karte (Landeskarte swisstopo), darunter GPS-Höhe, Steigen, integriertes Steigen und Höhe über Grund.
+- **Seite „Karte“:** grosse Karte (Grundkarte wählbar, Standard Landeskarte farbig), darunter GPS-Höhe, Steigen, integriertes Steigen und Höhe über Grund.
+- **Grundkarte und Ebenen** (Seite „Karte“ und Karte im Logbuch, dieselbe Wahl für beide): Knopf mit dem Ebenen-Symbol unten links auf der Karte, oder *Einstellungen → Karte und Ziel*.
+
+  | Grundkarte | Nutzen |
+  |---|---|
+  | Landeskarte farbig | Standard |
+  | Landeskarte grau | ruhiger Hintergrund, Spur und Ziel stechen hervor |
+  | Landeskarte Winter | Skirouten und Wildruhezonen eingezeichnet |
+  | Luftbild (SWISSIMAGE) | Landeplätze, Felder, Schneisen erkennen |
+  | Relief (ohne Beschriftung) | Gelände plastisch, Hänge und Leeseiten |
+
+  Darüber einzeln zuschaltbar: **Wildruhezonen** (BAFU), **Eidg. Jagdbanngebiete** (BAFU), **Hangneigung über 30°** (swisstopo). Sie sind durchsichtig über die Grundkarte gelegt.
+  Die Wahl gilt sofort und bleibt gespeichert. Die Quelle unten rechts nennt alle sichtbaren Ebenen.
 - **Seite „Luftraum“:** grosse Karte (Segelflugkarte BAZL), darunter GPS-Höhe und Uhrzeit.
 - **Auf der Karte:**
   - eigene Position als gelber Pfeil in Flugrichtung, unter 5 km/h als Punkt
@@ -344,24 +356,26 @@ Die App speichert das Logbuch nur im Browser. Gesichert wird von Hand, in eine D
   - Ziel mit gestrichelter Linie und oben einer Leiste mit Distanz, nötiger Gleitzahl und Name
   - Massstab, Nordpfeil (bei „Kurs oben“) und Quelle
 - **Ausrichtung:** „Kurs oben“ (Standard) oder „Nord oben“. Bei „Kurs oben“ dreht die Karte nur im Geradeausflug ab 8 km/h. Beim Kreisen bleibt sie stehen, nur der Pfeil dreht.
-- **Bedienung:** Die Karte folgt immer der eigenen Position und lässt sich nicht verschieben, damit Wischen weiter die Seite wechselt.
+- **Bedienung:** Die Karte folgt der eigenen Position. Mit einem Finger verschieben, mit zwei Fingern zoomen. Nach einer einstellbaren Zeit ohne Berührung (Standard 20 s) geht sie zurück zur Position.
   - Zoom mit den Knöpfen + und −. Landeskarte Zoom 8–15 (Standard 12, etwa 10 km Bildbreite), Segelflugkarte 8–13 (Standard 11). Über Zoom 12 wird die Segelflugkarte nur vergrössert und unscharf.
   - **Lang drücken** (0,7 s) setzt dort das Ziel. Oben erscheint 8 s lang „Rückgängig“.
 - **Ziel und Wegpunkte:** *Einstellungen → Karte und Ziel*. Wegpunkte mit Name und Koordinaten speichern, „Aktuelle Position“ übernimmt die Position vom Vario (sonst vom Handy). Koordinaten als WGS84 (`46.68, 7.86`), LV95 (`2'630'000 / 1'170'000`) oder LV03 (`630000 170000`).
 - **Nötige Gleitzahl:** Distanz geteilt durch (GPS-Höhe − Geländehöhe am Ziel). Ohne Wind und ohne Sicherheitsreserve. Unter der Zielhöhe steht „unter Ziel“. Auch als Kasten „Ziel“ für jede Seite wählbar.
 - **Gebiet:** Schweiz mit etwa 10 km Rand (45.72–47.90° N, 5.85–10.60° E). Ausserhalb lädt die Karte nichts und zeigt „ausserhalb der Schweiz“.
 - **Kartenbilder:** `wmts.geo.admin.ch` (Web Mercator, 256-px-Kacheln). Laden zuerst aus dem Speicher, dann aus der IndexedDB (`flugapp-karte`), dann aus dem Netz. Bilder aus dem Netz werden gespeichert.
-- **Offline:** *Gebiet offline speichern* lädt nach dem Gelände auch die Karten im selben Radius: Landeskarte ab Zoom 8 bis zur gewählten Stufe, Segelflugkarte Zoom 8–12. Bei 30 km Radius etwa:
+- **Offline:** *Gebiet offline speichern* lädt nach dem Gelände auch die Karten im selben Radius: die **gewählte** Grundkarte und die eingeschalteten Ebenen ab Zoom 8 bis zur gewählten Stufe, dazu die Segelflugkarte Zoom 8–12. Wer im Flug zwischen Grundkarten wechseln will, speichert das Gebiet einmal pro Grundkarte. Bei 30 km Radius etwa:
 
   | | bis Zoom | Grösse |
   |---|---|---|
-  | Landeskarte | 13 / 14 / 15 | ca. 15 / 55 / 210 MB |
+  | Landeskarte, Luftbild | 13 / 14 / 15 | ca. 15 / 55 / 210 MB |
+  | Relief | 13 / 14 / 15 | ca. 2,5-mal so viel |
+  | jede Ebene darüber | 14 | meist unter 10 MB |
   | Segelflugkarte | 12 | ca. 20 MB |
 
   Über 80 MB neue Daten fragt die App vorher nach. Gebiete über 250 MB lehnt sie ab („Radius oder Zoom verkleinern“), z. B. 60 km bis Zoom 14.
   iOS kann gespeicherte Daten löschen, wenn wenig Speicher frei ist. Vor dem Flug unter *Einstellungen* nachsehen, ob die Bilder noch da sind.
 - **Dunkelmodus:** Die Karte wird leicht abgedunkelt.
-- **Quellen:** Landeskarte © swisstopo, Segelflugkarte © BAZL (Open Government Data, Quellenangabe auf der Karte). Grosse Downloads sollen laut den Nutzungsbedingungen der Bundes-Geodateninfrastruktur vorher mit info@geo.admin.ch abgesprochen werden. Darum gibt es nur „Gebiet speichern“ und nicht die ganze Schweiz.
+- **Quellen:** Landeskarten, Luftbild, Relief und Hangneigung © swisstopo, Segelflugkarte © BAZL, Wildruhezonen und Jagdbanngebiete BAFU (Open Government Data, Quellenangabe auf der Karte). Grosse Downloads sollen laut den Nutzungsbedingungen der Bundes-Geodateninfrastruktur vorher mit info@geo.admin.ch abgesprochen werden. Darum gibt es nur „Gebiet speichern“ und nicht die ganze Schweiz.
 - **Bekannte Grenzen:**
   - Spur und Thermiken gibt es nur während einer Aufzeichnung. Nach einem Neuladen beginnt die Spur neu.
   - Die Position kommt vom Vario-GPS. Ohne Daten wird der Kasten abgedunkelt („Keine Daten“).

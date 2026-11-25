@@ -137,3 +137,22 @@ test("passendeAnsicht: ganze Spur ins Bild, grösste passende Zoomstufe, Mitte",
   assert.equal(K.passendeAnsicht([], 400, 300, 6, 15, 20), null);
   assert.equal(K.passendeAnsicht([{ lat: 46.6, lon: 7.8 }], 400, 300, 6, 15, 20).z, 15, "ein Punkt: höchste Stufe");
 });
+
+test("Ebenen: Grundkarten, Überlagerungen, URLs und Quellenangabe", () => {
+  for (const id of [...K.GRUNDKARTEN, ...K.UEBERLAGERUNGEN, "luft"]) {
+    const e = K.EBENEN[id];
+    assert.ok(e && e.layer && e.name && e.quelle, id);
+    assert.ok(e.zMin <= 8 && e.zMax >= 12 && e.mb > 0, id);
+  }
+  for (const id of K.GRUNDKARTEN) assert.ok(!K.EBENEN[id].ueber, id + " ist keine Überlagerung");
+  for (const id of K.UEBERLAGERUNGEN) { const e = K.EBENEN[id]; assert.ok(e.ueber && e.ext === "png" && e.alpha > 0 && e.alpha <= 1, id); }
+  // Zoomgrenzen der Seiten kommen von "topo" und "luft"
+  assert.equal(K.EBENEN.topo.zoomStandard, 12); assert.equal(K.EBENEN.luft.zoomStandard, 11);
+  assert.equal(K.kachelUrl("bild", 12, 2133, 1442),
+    "https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage/default/current/3857/12/2133/1442.jpeg");
+  assert.equal(K.kachelUrl("wrz", 12, 2133, 1442),
+    "https://wmts.geo.admin.ch/1.0.0/ch.bafu.wrz-wildruhezonen_portal/default/current/3857/12/2133/1442.png");
+  assert.equal(K.quellenText("topo", []), "© swisstopo");
+  assert.equal(K.quellenText("bild", ["wrz", "jagd", "hang"]), "© swisstopo, BAFU");
+  assert.equal(K.quellenText("luft", ["hang"]), "© BAZL, swisstopo");
+});
