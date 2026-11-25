@@ -124,3 +124,16 @@ test("Spur: Mindestdistanz und Ausdünnen", () => {
   assert.equal(s[s.length - 1].lat, 46 + 150 * 0.001);   // neuester Punkt bleibt
   assert.equal(s[0].lat, 46);                           // ältester auch
 });
+
+test("passendeAnsicht: ganze Spur ins Bild, grösste passende Zoomstufe, Mitte", () => {
+  const pkt = [{ lat: 46.60, lon: 7.80 }, { lat: 46.70, lon: 7.95 }, { lat: 46.65, lon: 7.90 }];
+  const a = K.passendeAnsicht(pkt, 400, 300, 6, 15, 20);
+  // Breite der Spur auf Stufe z muss passen, auf z+1 nicht mehr
+  const breite = (z) => K.lonZuX(7.95, z) - K.lonZuX(7.80, z), hoehe = (z) => K.latZuY(46.60, z) - K.latZuY(46.70, z);
+  assert.ok(breite(a.z) <= 360 && hoehe(a.z) <= 260);
+  assert.ok(breite(a.z + 1) > 360 || hoehe(a.z + 1) > 260);
+  assert.ok(Math.abs(a.lon - 7.875) < 1e-9);
+  assert.ok(a.lat > 46.6 && a.lat < 46.7);
+  assert.equal(K.passendeAnsicht([], 400, 300, 6, 15, 20), null);
+  assert.equal(K.passendeAnsicht([{ lat: 46.6, lon: 7.8 }], 400, 300, 6, 15, 20).z, 15, "ein Punkt: höchste Stufe");
+});

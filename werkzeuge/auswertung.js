@@ -5,7 +5,7 @@
 "use strict";
 const fs = require("node:fs");
 const path = require("node:path");
-const igc = require("./igc.js");
+const igc = require("../igc.js");
 const Kreisen = require("../kreisen.js");
 const Wind = require("../wind.js");
 

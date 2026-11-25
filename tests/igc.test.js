@@ -1,8 +1,8 @@
-// Tests für das Lesen von IGC-Dateien (werkzeuge/igc.js).  Ausführen:  node --test tests/*.test.js
+// Tests für das Lesen von IGC-Dateien (igc.js).  Ausführen:  node --test tests/*.test.js
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const igc = require("../werkzeuge/igc.js");
+const igc = require("../igc.js");
 const near = (a, b, eps) => assert.ok(Math.abs(a - b) <= eps, `${a} ≉ ${b}`);
 
 test("Koordinaten DDMMmmm / DDDMMmmm mit Halbkugel", () => {

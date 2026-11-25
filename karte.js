@@ -177,6 +177,22 @@
     return true;
   }
 
+  /* ---------- Ganze Spur ins Bild: grösste ganze Zoomstufe, bei der alle Punkte mit rand Pixeln Abstand passen ----------
+     Gibt {z, lat, lon} (Mitte des umschliessenden Rechtecks) oder null ohne Punkte. */
+  function passendeAnsicht(punkte, breite, hoehe, zMin, zMax, rand) {
+    if (!punkte || !punkte.length) return null;
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const p of punkte) {
+      const w = zuWelt(p.lat, p.lon, 0);
+      if (w.x < x0) x0 = w.x; if (w.x > x1) x1 = w.x; if (w.y < y0) y0 = w.y; if (w.y > y1) y1 = w.y;
+    }
+    const bw = Math.max(1, breite - 2 * rand), bh = Math.max(1, hoehe - 2 * rand);
+    let z = zMin;
+    for (let k = zMax; k >= zMin; k--) { const s = Math.pow(2, k); if ((x1 - x0) * s <= bw && (y1 - y0) * s <= bh) { z = k; break; } }
+    const m = ausWelt((x0 + x1) / 2, (y0 + y1) / 2, 0);
+    return { z, lat: m.lat, lon: m.lon };
+  }
+
   /* ---------- Massstab: runde Länge, die etwa in maxPx passt ---------- */
   function massstab(mProPx, maxPx) {
     const roh = mProPx * maxPx, p = Math.pow(10, Math.floor(Math.log10(roh)));
@@ -192,6 +208,8 @@
        ausrichtung: "kurs"|"nord",
        kachel(ebene, z, x, y, nurNachsehen) → Bild oder null (fehlende Kacheln lädt die Funktion selbst nach, ausser nurNachsehen),
        spur: [{lat, lon}], thermiken: [{lat, lon, text}], ziel: {lat, lon} | null,
+       spurOhnePos: bool (keine Linie vom Spurende zur Position), spurBis: Index (bis hier kräftig, danach blass),
+       route: {punkte [{lat, lon}], geschlossen, schluss [{lat, lon}, {lat, lon}] | null, marken ["S", "1", …] | null} | null,
        farben: {hinter, spur, pfeil, pfeilRand, ziel, thermik, text, textHinter}, dunkel: bool,
        frei: {lat, lon, rot, ax, ay} | null   (von Hand verschoben: dieser Kartenpunkt liegt am Bildpunkt ax/ay, Drehung fest)
      }
@@ -231,14 +249,36 @@
     }
     if (d.dunkel) { ctx.fillStyle = "rgba(0,0,0,0.22)"; ctx.fillRect(v.cx - 4 * W - 4 * H, v.cy - 4 * W - 4 * H, 8 * (W + H), 8 * (W + H)); }
 
-    // Spur
+    // Spur (Logbuch: spurOhnePos, und bis spurBis kräftig, danach blass)
     if (d.spur && d.spur.length > 1) {
-      ctx.beginPath();
-      d.spur.forEach((p, i) => { const w = zuWelt(p.lat, p.lon, d.z); i ? ctx.lineTo(w.x, w.y) : ctx.moveTo(w.x, w.y); });
-      if (d.pos) ctx.lineTo(c.x, c.y);
+      const pfad = (von, bis, mitPos) => {
+        ctx.beginPath();
+        for (let i = von; i <= bis; i++) { const w = zuWelt(d.spur[i].lat, d.spur[i].lon, d.z); i > von ? ctx.lineTo(w.x, w.y) : ctx.moveTo(w.x, w.y); }
+        if (mitPos) ctx.lineTo(c.x, c.y);
+      };
       ctx.lineJoin = "round"; ctx.lineCap = "round";
+      const n = d.spur.length - 1, bis = Number.isFinite(d.spurBis) ? Math.max(0, Math.min(n, d.spurBis)) : n;
+      pfad(0, n, d.pos && !d.spurOhnePos);
       ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.lineWidth = 5; ctx.stroke();
-      ctx.strokeStyle = f.spur; ctx.lineWidth = 3; ctx.stroke();
+      if (bis < n) {
+        ctx.globalAlpha = 0.4; ctx.strokeStyle = f.spur; ctx.lineWidth = 3; ctx.stroke(); ctx.globalAlpha = 1;
+        if (bis > 0) { pfad(0, bis, d.pos && !d.spurOhnePos); ctx.strokeStyle = f.spur; ctx.lineWidth = 3; ctx.stroke(); }
+      } else { ctx.strokeStyle = f.spur; ctx.lineWidth = 3; ctx.stroke(); }
+    }
+    // Route (Logbuch: XContest-Wendepunkte, beim Dreieck geschlossen, Schlussabstand dünn)
+    const route = d.route && d.route.punkte && d.route.punkte.length > 1 ? d.route : null;
+    if (route) {
+      ctx.beginPath();
+      route.punkte.forEach((p, i) => { const w = zuWelt(p.lat, p.lon, d.z); i ? ctx.lineTo(w.x, w.y) : ctx.moveTo(w.x, w.y); });
+      if (route.geschlossen) ctx.closePath();
+      ctx.setLineDash([9, 6]); ctx.lineJoin = "round";
+      ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = 4.5; ctx.stroke();
+      ctx.strokeStyle = f.ziel; ctx.lineWidth = 2.5; ctx.stroke();
+      if (route.schluss) {
+        const a = zuWelt(route.schluss[0].lat, route.schluss[0].lon, d.z), b = zuWelt(route.schluss[1].lat, route.schluss[1].lon, d.z);
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.setLineDash([3, 4]); ctx.strokeStyle = f.ziel; ctx.lineWidth = 2; ctx.stroke();
+      }
+      ctx.setLineDash([]);
     }
     // Linie zum Ziel
     let zw = null;
@@ -260,6 +300,16 @@
       ctx.beginPath(); ctx.arc(b.x, b.y, 7, 0, 2 * Math.PI);
       ctx.fillStyle = f.thermik; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = "#fff"; ctx.stroke();
       if (t.text) beschriftung(ctx, t.text, b.x + 11, b.y, f);
+    }
+    if (route) {
+      ctx.font = "800 12px -apple-system, BlinkMacSystemFont, sans-serif"; ctx.textAlign = "center";
+      route.punkte.forEach((p, i) => {
+        if (route.marken && !route.marken[i]) return;
+        const w = zuWelt(p.lat, p.lon, d.z), b = weltZuBild(v, w.x, w.y);
+        ctx.beginPath(); ctx.arc(b.x, b.y, 8, 0, 2 * Math.PI); ctx.fillStyle = f.ziel; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = "#fff"; ctx.stroke();
+        ctx.fillStyle = "#fff"; ctx.fillText(route.marken ? route.marken[i] : String(i + 1), b.x, b.y + 1);
+      });
+      ctx.textAlign = "start"; ctx.font = "800 14px -apple-system, BlinkMacSystemFont, sans-serif";
     }
     if (zw) {
       const b = weltZuBild(v, zw.x, zw.y);
@@ -316,6 +366,6 @@
     lonZuX, latZuY, xZuLon, yZuLat, zuWelt, ausWelt, meterProPixel, imGebiet, gebietKacheln, kachelImGebiet,
     weltZuBild, bildZuWelt, kachelnFuerAnsicht, kachelnUmkreis,
     distanz, peilung, noetigeGleitzahl, wgs84ZuLv95, lv95ZuWgs84, leseKoordinaten, formatKoordinaten,
-    spurHinzu, massstab, zeichne,
+    spurHinzu, passendeAnsicht, massstab, zeichne,
   };
 });

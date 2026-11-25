@@ -292,6 +292,83 @@
   .sbody > .sgroup + button { margin-top: 0; }
   #page-debug { padding-top: 0; }
   .snavbar.dbgnav { margin: 0 -10px 4px; }
+
+  /* ---------- Logbuch ---------- */
+  .lbkopf { display: flex; align-items: center; gap: 10px; }
+  .lbkopf .stitle-big { flex: 1; }
+  .lbimport { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 40px; padding: 0 14px; border-radius: 999px;
+    background: var(--card); color: var(--info); font-size: 16px; font-weight: 750; border: 1.5px solid var(--line); cursor: pointer; }
+  .lbimport input { display: none; }
+  .seg { display: flex; background: var(--card); border-radius: 11px; padding: 3px; gap: 3px; margin: 0 0 10px; overflow-x: auto; scrollbar-width: none; }
+  .seg::-webkit-scrollbar { display: none; }
+  .seg button { flex: 1 0 auto; width: auto; min-height: 36px; margin: 0; padding: 6px 12px; font-size: 15px; border-radius: 8px; background: transparent; color: var(--text); }
+  .seg button.on { background: var(--accent); color: var(--accent-text); }
+  #lbMeldung:empty { display: none; }
+  #lbMeldung { margin: 0 2px 10px; font-size: .9rem; color: var(--label); }
+  .lbjahr { display: flex; justify-content: space-between; gap: 8px; margin: 16px 4px 6px; font-size: 15px; font-weight: 750; color: var(--label); font-variant-numeric: tabular-nums; }
+  .lbjahr span:last-child { font-weight: 600; color: var(--dim); text-align: right; }
+  button.lbflug { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; min-height: 62px; margin: 0; padding: 8px 12px;
+    background: transparent; color: var(--text); border-radius: 0; text-align: left; font-size: 16px; font-weight: 600; }
+  button.lbflug:active { background: color-mix(in srgb, var(--text) 8%, transparent); }
+  button.lbflug + button.lbflug::before { content: ""; position: absolute; top: 0; right: 0; left: 12px; border-top: 1px solid var(--line); }
+  .lbflug .l { flex: 1; min-width: 0; }
+  .lbflug .n { display: block; font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lbflug .d { display: block; font-size: 14px; color: var(--dim); font-weight: 500; }
+  .lbflug .r { flex: none; text-align: right; font-weight: 750; font-variant-numeric: tabular-nums; }
+  .lbflug .r small { display: block; font-size: 13px; color: var(--dim); font-weight: 500; }
+  .lbleer { padding: 18px 14px; color: var(--dim); font-size: .95rem; }
+  .lbname { display: flex; align-items: center; gap: 8px; margin: 4px 2px 0; }
+  .lbname .nm { flex: 1; min-width: 0; font-size: 24px; font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }
+  .lbname input { flex: 1; min-width: 0; font-size: 19px; font-weight: 700; }
+  .lbname button { width: auto; min-height: 44px; margin: 0; padding: 0 12px; font-size: 15px; }
+  .lbsub { margin: 2px 2px 8px; color: var(--dim); font-size: 15px; font-variant-numeric: tabular-nums; }
+  .lbkarte { position: relative; height: 46vh; min-height: 240px; max-height: 520px; border-radius: 12px; overflow: hidden; background: var(--line); }
+  .lbkarte canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  .lbkarte .kz { position: absolute; right: 8px; bottom: 24px; display: flex; flex-direction: column; gap: 6px; z-index: 2; }
+  .lbkarte .kz button { width: 44px; height: 44px; min-height: 0; margin: 0; padding: 0; border-radius: 10px; font-size: 26px; font-weight: 800; line-height: 1;
+    background: rgba(255,255,255,.92); color: #000; border: 1.5px solid rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; }
+  .lbkarte .kz button svg { width: 24px; height: 24px; }
+  .lbkarte .kmsg { position: absolute; left: 8px; top: 8px; z-index: 2; display: none; background: var(--flag-bg); color: #000; font-size: 13px; font-weight: 800;
+    padding: 3px 10px; border-radius: 999px; }
+  .lbkarte .kmsg.an { display: block; }
+  .lbbaro { position: relative; height: 100px; margin-top: 6px; background: var(--card); border-radius: 12px; overflow: hidden; }
+  .lbbaro canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+  .lbspiel { display: flex; gap: 8px; align-items: center; margin: 6px 0 12px; }
+  .lbspiel button { width: auto; flex: none; min-height: 44px; margin: 0; padding: 0 14px; font-size: 17px; }
+  .lbspiel .lbplay { width: 52px; padding: 0; display: flex; align-items: center; justify-content: center; }
+  .lbspiel .lbplay svg { width: 22px; height: 22px; }
+  .lbwerte { flex: 1; min-width: 0; font-size: 14.5px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.3; }
+  .lbwerte .w2 { color: var(--dim); font-weight: 600; }
+  .lbkacheln { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .lbk { background: var(--card); border-radius: 12px; padding: 8px 11px 9px; min-width: 0; }
+  .lbk.weit { grid-column: 1 / -1; }
+  .lbk .k { font-size: 13px; color: var(--label); font-weight: 650; }
+  .lbk .v { font-size: 25px; font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lbk .v small { font-size: 14px; color: var(--label); font-weight: 700; margin-left: 3px; letter-spacing: 0; }
+  .lbk .s { font-size: 12.5px; color: var(--dim); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lbk[data-id] { cursor: pointer; }
+  .lbk[data-id]:active { background: color-mix(in srgb, var(--text) 8%, var(--card)); }
+  table.lbtab { width: 100%; border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; }
+  table.lbtab th { text-align: left; font-size: 13px; font-weight: 650; color: var(--label); padding: 4px 4px 6px; }
+  table.lbtab td { padding: 7px 4px; border-top: 1px solid var(--line); }
+  table.lbtab td.z, table.lbtab th.z { text-align: right; }
+  table.lbtab tr.best td { font-weight: 800; }
+  table.lbtab tr.an td { background: color-mix(in srgb, var(--info) 14%, transparent); }
+  table.lbtab tr[data-typ] { cursor: pointer; }
+  .lbhinweis { font-size: .85rem; color: var(--dim); margin: 8px 2px; }
+  .lbsich { padding: 4px 12px 12px; }
+  .lbsich .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; padding: 8px 0 10px; font-size: 15px; }
+  .lbsich .kv span { color: var(--label); }
+  .lbsich .kv b { text-align: right; white-space: nowrap; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .lbsich .kv b.warn { color: var(--warn); }
+  .lbsich .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .lbsich .row > button, .lbsich .row > label { flex: 1 1 140px; width: auto; margin: 0; min-height: 48px; padding: 6px 12px; font-size: 16px; }
+  .lbsich label.knopf { display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; background: var(--card); color: var(--text);
+    border: 1.5px solid var(--line); font-weight: 750; cursor: pointer; text-align: center; }
+  .lbsich .lbhinweis { margin: 10px 0 0; }
+  .lbsichbanner { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 8px 8px 8px 12px; border-radius: 12px; background: var(--card); font-size: 14.5px; }
+  .lbsichbanner span { flex: 1; color: var(--label); }
+  .lbsichbanner button { flex: none; width: auto; min-height: 38px; margin: 0; padding: 0 14px; font-size: 15px; }
 </style>
 </head>
 <body>
@@ -443,6 +520,28 @@
     </div></div>
   </section>
 
+  <!-- ================= LOGBUCH =================
+       Liste der Flüge (nach Saison) und Statistik; Antippen eines Flugs schiebt die Detailseite herein (wie die Einstellungen). -->
+  <section class="page" id="page-logbuch">
+    <div class="sview cur" id="lb-root" data-title="Logbuch"><div class="sbody">
+      <div class="lbkopf">
+        <h1 class="stitle-big">Logbuch</h1>
+        <label class="lbimport" aria-label="IGC-Dateien importieren">+ IGC<input type="file" id="lbDatei" multiple></label>
+      </div>
+      <div class="seg" id="lbSeg"><button type="button" data-lb="fluege" class="on">Flüge</button><button type="button" data-lb="statistik">Statistik</button></div>
+      <div id="lbMeldung"></div>
+      <div id="lbSichBanner"></div>
+      <div id="lbListe"></div>
+      <div id="lbSicherung"></div>
+      <input type="file" id="lbSicherungDatei" hidden>
+      <div id="lbStatistik" style="display:none"></div>
+    </div></div>
+    <div class="sview" id="lb-detail" data-title="Flug">
+      <div class="snavbar"><button type="button" class="sback" id="lbZurueck"></button><span class="snt" id="lbTitel">Flug</span><span></span></div>
+      <div class="sbody" id="lbDetail"></div>
+    </div>
+  </section>
+
   <!-- ================= DEBUG ================= -->
   <section class="page scroll" id="page-debug">
     <div class="snavbar dbgnav"><button type="button" class="sback" id="btnDebugZurueck" aria-label="Zurück zu Einstellungen"></button><span class="snt">Debug</span><span></span></div>
@@ -527,6 +626,7 @@
 
 <nav id="tabs" class="tabbar">
   <button data-tab="start" aria-label="Start" title="Start"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 11L12 4l8.5 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5.5h4V20"/></svg></button>
+  <button data-tab="logbuch" aria-label="Logbuch" title="Logbuch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3"/><path d="M9 7.5h6M9 11h4"/></svg></button>
   <button data-tab="einst" aria-label="Einstellungen" title="Einstellungen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
 </nav>
 <nav id="ftabs" class="tabbar">
@@ -910,6 +1010,11 @@ const Core = (() => {
 <script src="./wind.js"></script>
 <script src="./startlandung.js"></script>
 <script src="./karte.js"></script>
+<!-- Logbuch: IGC lesen, XContest-Distanz, Auswertung und Statistik (eigene Dateien, in Node getestet) -->
+<script src="./igc.js"></script>
+<script src="./xcontest.js"></script>
+<script src="./flugbuch.js"></script>
+<script src="./zip.js"></script>
 
 <script>
 "use strict";
@@ -1331,7 +1436,7 @@ function handleLine(line, key) {
 /* =====================================================================
    FLUG-ANZEIGE
    ===================================================================== */
-const APP_VERSION = "2026-11-24.9";
+const APP_VERSION = "2026-11-25.1";
 const STALE_MS = 2000;          // ohne neue Daten länger als das → „keine Daten“
 const HOLD_MS = 2000;           // ein Messwert gilt höchstens so lange (Lücken zählen nicht)
 const MIN_COVERAGE = 0.9;       // Fenster gilt als gefüllt ab 90 % Abdeckung
@@ -2054,14 +2159,20 @@ function refitAll() { for (const pid in pageRefs) for (const r of pageRefs[pid])
 window.addEventListener("resize", () => setTimeout(refitAll, 50));
 
 /* ---------- Seiten und Flugmodus ---------- */
-const TABS = ["start", "einst", "debug", "fly"];   // "debug" nur über Einstellungen → Debug erreichbar
+const TABS = ["start", "logbuch", "einst", "debug", "fly"];   // "debug" nur über Einstellungen → Debug erreichbar
 let activeTab = lsGet("flugapp.tab");
-if (!["start", "einst"].includes(activeTab)) activeTab = "start";
+if (!["start", "logbuch", "einst"].includes(activeTab)) activeTab = "start";
 let flyIndex = 0;
 function showTab(t) {
   if (t === "fly" && !rec.active) t = "start";   // Fluganzeige nur während eines Flugs
+  if (activeTab === "logbuch" && t !== "logbuch") fbAbspielen(false);
   activeTab = t;
-  if (t === "start" || t === "einst") lsSet("flugapp.tab", t);
+  if (t === "start" || t === "einst" || t === "logbuch") lsSet("flugapp.tab", t);
+  if (t === "logbuch") {
+    // dauerhaften Speicher einmal anfragen, wenn das Logbuch angetippt wird (nicht beim Laden der App)
+    if (FB_OK && !fb.speicherGefragt && navigator.userActivation && navigator.userActivation.isActive) fbSpeicherAnfragen();
+    fbZeigen();
+  }
   for (const id of TABS) $("page-" + id).classList.toggle("active", id === t);
   document.body.classList.toggle("flying", t === "fly");
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === (t === "debug" ? "einst" : t)));
@@ -2084,6 +2195,7 @@ $("swiper").addEventListener("scroll", () => {
 window.addEventListener("resize", () => { if (activeTab === "fly") { const sw = $("swiper"); sw.scrollLeft = flyIndex * sw.clientWidth; } });
 document.querySelectorAll("#tabs button").forEach(b => b.addEventListener("click", () => {
   if (b.dataset.tab === "einst" && activeTab === "einst") setRoot();   // nochmals tippen = zurück zur Kategorienliste (wie iOS)
+  if (b.dataset.tab === "logbuch" && activeTab === "logbuch") fbZurueck(true);
   showTab(b.dataset.tab);
 }));
 document.querySelectorAll("#ftabs button[data-fp]").forEach(b => b.addEventListener("click", () => goFlyPage(+b.dataset.fp)));
@@ -2165,6 +2277,7 @@ function render() {
   if (activeTab === "fly" && !rec.active) { showTab("start"); return; }   // Flug zu Ende: weg von der Fluganzeige
   if (activeTab === "fly") { for (const pid of PAGE_IDS) renderInstrumentPage(pid, now, noData); renderPhaseBar(); }
   if (activeTab === "start") renderStart(now);
+  if (activeTab === "logbuch") fbRender();
   if (activeTab === "debug") {
     const b = stats.bad;
     $("rawStats").textContent = `Zeilen ${stats.lines} · verworfen: Prüfsumme falsch ${b.bad}, ohne Prüfsumme ${b.nocs}, unlesbar ${b.format}`
@@ -2380,13 +2493,20 @@ let dbPromise = null;
 function idb() {
   if (!dbPromise) dbPromise = new Promise((resolve, reject) => {
     if (!("indexedDB" in window)) { reject(new Error("IndexedDB nicht verfügbar")); return; }
-    const r = indexedDB.open("flugapp", 1);
-    r.onupgradeneeded = () => {
-      const db = r.result;
-      db.createObjectStore("sessions", { keyPath: "id" });
-      db.createObjectStore("chunks", { autoIncrement: true }).createIndex("sid", "sid");
+    // Version 1: Aufzeichnungen (sessions, chunks). Version 2: Logbuch (fluege) und importierte IGC-Dateien (igc, Schlüssel = Flug-id).
+    const r = indexedDB.open("flugapp", 2);
+    r.onupgradeneeded = (e) => {
+      const db = r.result, alt = e.oldVersion || 0;
+      if (alt < 1) {
+        db.createObjectStore("sessions", { keyPath: "id" });
+        db.createObjectStore("chunks", { autoIncrement: true }).createIndex("sid", "sid");
+      }
+      if (alt < 2) {
+        db.createObjectStore("fluege", { keyPath: "id" });
+        db.createObjectStore("igc");
+      }
     };
-    r.onsuccess = () => resolve(r.result);
+    r.onsuccess = () => { const db = r.result; db.onversionchange = () => { db.close(); dbPromise = null; }; resolve(db); };
     r.onerror = () => reject(r.error);
     r.onblocked = () => reject(new Error("IndexedDB blockiert (anderer Tab offen?)"));
   });
@@ -2455,6 +2575,7 @@ async function recStop() {
   }
   rec.session = null;
   renderRecInfo(); refreshSessions();
+  if (s && s.end !== null) setTimeout(() => fbNachAufzeichnung(Object.assign({}, s), false), 0);   // ins Logbuch (nach der Landung, ohne zu warten)
 }
 // Fehlstart: laufende Aufzeichnung abbrechen und ganz löschen
 async function recVerwerfen() {
@@ -2483,6 +2604,7 @@ async function closeInterrupted(s) {
   } catch (e) { log("Abschliessen fehlgeschlagen: " + errText(e), "err"); }
   rec.interrupted = rec.interrupted.filter(x => x.id !== s.id);
   renderInterrupted(); refreshSessions();
+  if (s.end !== null) fbNachAufzeichnung(Object.assign({}, s), false);
 }
 async function loadSession(sid) {
   const db = await idb();
@@ -2547,21 +2669,31 @@ async function refreshSessions() {
   try { all = await listSessions(); }
   catch (e) { host.innerHTML = `<span class="bad-t">${esc("Speicher nicht verfügbar: " + errText(e))}</span>`; return; }
   if (!all.length) { host.innerHTML = `<span class="hint">Noch keine Aufzeichnungen.</span>`; return; }
+  let imLogbuch = new Map();
+  try { for (const f of await fbAlle()) if (f.sid) imLogbuch.set(f.sid, f); } catch (e) { /* Logbuch nicht lesbar: ohne Hinweis */ }
   host.innerHTML = "";
   for (const s of all) {
     const running = rec.active && rec.session && rec.session.id === s.id;
+    const flug = imLogbuch.get(s.id);
     const d = document.createElement("div");
     d.className = "sess";
     const dur = Core.fmtDuration((s.end || s.lastT || s.start) - s.start);
     d.innerHTML = `<div class="t">${esc(new Date(s.start).toLocaleString("de-CH"))}${running ? " · läuft" : s.end === null ? " · unterbrochen" : ""}</div>
-      <div class="m">Dauer ${dur} · ${s.lines} Zeilen · ${s.fixes} GPS-Fixes${s.art === "auto" ? " · Start erkannt" : ""}</div>
-      <div class="row"><button class="secondary e-txt">.txt</button><button class="secondary e-igc">.igc</button><button class="danger e-del">Löschen</button></div>`;
+      <div class="m">Dauer ${dur} · ${s.lines} Zeilen · ${s.fixes} GPS-Fixes${s.art === "auto" ? " · Start erkannt" : ""}${flug ? " · im Logbuch: " + esc(flug.name) : ""}</div>
+      <div class="row"><button class="secondary e-txt">.txt</button><button class="secondary e-igc">.igc</button><button class="danger e-del">Löschen</button></div>
+      ${!flug && !running && s.end !== null ? '<button class="secondary e-lb">Ins Logbuch</button>' : ""}`;
     d.querySelector(".e-txt").onclick = () => exportSession(s, "txt");
     d.querySelector(".e-igc").onclick = () => exportSession(s, "igc");
+    const lb = d.querySelector(".e-lb");
+    if (lb) lb.onclick = async () => { lb.disabled = true; await fbNachAufzeichnung(s, true); refreshSessions(); };
     d.querySelector(".e-del").onclick = async () => {
       if (running) { log("Laufende Aufzeichnung zuerst stoppen.", "err"); return; }
-      if (!confirm("Aufzeichnung vom " + new Date(s.start).toLocaleString("de-CH") + " endgültig löschen? Das kann nicht rückgängig gemacht werden.")) return;
-      try { await deleteSession(s.id); rec.interrupted = rec.interrupted.filter(x => x.id !== s.id); renderInterrupted(); }
+      if (!confirm("Aufzeichnung vom " + new Date(s.start).toLocaleString("de-CH") + " endgültig löschen?" + (flug ? " Der Flug „" + flug.name + "“ verschwindet damit auch aus dem Logbuch." : "")
+        + " Das kann nicht rückgängig gemacht werden.")) return;
+      try {
+        if (flug) await fbLoeschen(flug); else await deleteSession(s.id);
+        rec.interrupted = rec.interrupted.filter(x => x.id !== s.id); renderInterrupted();
+      }
       catch (e) { log("Löschen fehlgeschlagen: " + errText(e), "err"); }
       refreshSessions();
     };
@@ -2589,27 +2721,31 @@ async function exportSession(s, kind) {
     await deliverFile(name, text);
   } catch (e) { log("Export fehlgeschlagen: " + errText(e), "err"); }
 }
-async function deliverFile(name, text) {
-  if ($("exportAsText").checked) {
+/* inhalt: Text oder Blob (z. B. die ZIP-Sicherung; die Option „Export im Textfeld“ gilt nur für Text).
+   → "textfeld" | "geteilt" | "abgebrochen" | "download" (ob der Download geklappt hat, ist nicht feststellbar) */
+async function deliverFile(name, inhalt, mime) {
+  const istText = typeof inhalt === "string";
+  if (istText && $("exportAsText").checked) {
     $("exportName").textContent = name;
-    $("exportText").value = text;
+    $("exportText").value = inhalt;
     $("exportBox").style.display = "block";
     $("exportText").scrollIntoView({ block: "center" });
-    return;
+    return "textfeld";
   }
-  const mime = name.endsWith(".igc") ? "application/octet-stream" : "text/plain";
-  const blob = new Blob([text], { type: mime });
+  mime = mime || (name.endsWith(".igc") ? "application/octet-stream" : "text/plain");
+  const blob = istText ? new Blob([inhalt], { type: mime }) : inhalt;
   let file = null;
   try { file = new File([blob], name, { type: mime }); } catch (e) { /* ältere Browser */ }
   if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: name }); return; }
-    catch (e) { if (e && e.name === "AbortError") return; log("Teilen fehlgeschlagen, versuche Download: " + errText(e), "sys"); }
+    try { await navigator.share({ files: [file], title: name }); return "geteilt"; }
+    catch (e) { if (e && e.name === "AbortError") return "abgebrochen"; log("Teilen fehlgeschlagen, versuche Download: " + errText(e), "sys"); }
   }
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 30000);
-  log("Download angestossen: " + name + " (falls nichts passiert: Option „Export im Textfeld anzeigen“)", "sys");
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  log("Download angestossen: " + name + (istText ? " (falls nichts passiert: Option „Export im Textfeld anzeigen“)" : ""), "sys");
+  return "download";
 }
 $("exportClose").onclick = () => { $("exportBox").style.display = "none"; $("exportText").value = ""; };
 
@@ -3369,6 +3505,853 @@ $("kRueck").addEventListener("change", (e) => {
 $("kOfflineZoom").addEventListener("change", (e) => { e.stopPropagation(); karteSet.offlineZoom = clampInt($("kOfflineZoom").value, 12, 15, 14); saveKarte(); });
 
 /* =====================================================================
+   LOGBUCH (Auswertung in flugbuch.js, XContest in xcontest.js, IGC lesen in igc.js)
+   Speicher: IndexedDB "flugapp", Store "fluege" (ein Eintrag pro Flug mit den berechneten Werten) und "igc"
+   (Originaldatei importierter Flüge). Aufgezeichnete Flüge verweisen auf ihre Aufzeichnung (sid); deren Fixes
+   bleiben in "chunks". Ein Flug = eine Aufzeichnung: Löschen im Logbuch löscht auch die Aufzeichnung.
+   ===================================================================== */
+const FB_OK = typeof Flugbuch !== "undefined" && typeof XContest !== "undefined" && typeof Igc !== "undefined";
+const FB_KEY = "flugapp.logbuch.v1";          // {geprueft: [Aufzeichnungs-ids, die schon fürs Logbuch angesehen wurden]}
+const FB_UEBERNAHME_MIN_S = 180;              // bisherige Aufzeichnungen: nur mit erkanntem Start und mindestens so lang
+const FB_SPUR_MIN_M = 8;                      // Spur auf der Karte: Punkte erst ab diesem Abstand
+const FB_TEMPI = [10, 30, 100];               // Abspielen: so viel schneller als echt
+const fb = { liste: null, laedt: null, ansicht: "fluege", statJahr: "gesamt", detail: null, kette: Promise.resolve(), meldung: "", meldungT: 0 };
+const fbText = (e) => (e && e.message) || String(e);   // kurze Fehlermeldung für die Anzeige (ausführlich im Log)
+const fbKette = (fn) => { const p = fb.kette.then(fn); fb.kette = p.catch(() => {}); return p; };
+function fbMelden(text, bleibt) { fb.meldung = text; fb.meldungT = bleibt ? Infinity : performance.now() + 15000; const el = $("lbMeldung"); if (el) el.textContent = text; }
+
+/* ---------- Speicher ---------- */
+async function fbAlle() {
+  const db = await idb();
+  return await reqP(db.transaction("fluege").objectStore("fluege").getAll());
+}
+async function fbPut(flug, igcText) {
+  const db = await idb();
+  const tx = db.transaction(["fluege", "igc"], "readwrite");
+  tx.objectStore("fluege").put(flug);
+  if (igcText !== undefined) tx.objectStore("igc").put(igcText, flug.id);
+  await txDone(tx);
+  fb.liste = null;
+}
+async function fbLoeschen(flug) {
+  const db = await idb();
+  const tx = db.transaction(["fluege", "igc", "sessions", "chunks"], "readwrite");
+  tx.objectStore("fluege").delete(flug.id);
+  tx.objectStore("igc").delete(flug.id);
+  if (flug.sid) {
+    tx.objectStore("sessions").delete(flug.sid);
+    const keys = await reqP(tx.objectStore("chunks").index("sid").getAllKeys(flug.sid));
+    for (const k of keys) tx.objectStore("chunks").delete(k);
+  }
+  await txDone(tx);
+  fb.liste = null;
+}
+async function fbSession(sid) { const db = await idb(); return await reqP(db.transaction("sessions").objectStore("sessions").get(sid)); }
+// Punkte eines Flugs aus der Quelle (Aufzeichnung oder IGC-Datei)
+async function fbPunkte(flug) {
+  if (flug.quelle === "igc") return Flugbuch.punkteAusIgc(await fbIgcText(flug.id)).punkte;
+  const data = await loadSession(flug.sid);
+  return Flugbuch.punkteAusApp(data.fixes, flug.sessionStart);
+}
+function fbGeprueft(sid) {
+  let s; try { s = JSON.parse(lsGet(FB_KEY) || "null"); } catch (e) { s = null; }
+  if (!s || !Array.isArray(s.geprueft)) s = { geprueft: [] };
+  if (sid === undefined) return new Set(s.geprueft);
+  if (!s.geprueft.includes(sid)) s.geprueft.push(sid);
+  s.geprueft = s.geprueft.slice(-1000);
+  lsSet(FB_KEY, JSON.stringify(s));
+}
+const fbPause = () => new Promise(r => setTimeout(r, 30));   // zwischen zwei Auswertungen der Anzeige Luft lassen
+
+/* ---------- Flüge eintragen ---------- */
+/* Nach einer Aufzeichnung (Landung, „Flug beenden“, „Abschliessen“) oder von Hand aus der Debug-Liste.
+   Automatisch nur mit erkanntem Start; von Hand immer (Rückfrage, wenn derselbe Flug schon drin ist). */
+function fbNachAufzeichnung(s, vonHand) {
+  if (!FB_OK) return Promise.resolve(null);
+  return fbKette(async () => {
+    try {
+      const alle = await fbAlle();
+      if (alle.some(f => f.sid === s.id)) return null;
+      const data = await loadSession(s.id);
+      const P = Flugbuch.punkteAusApp(data.fixes, s.start);
+      if (P.length < 10) { if (vonHand) fbMelden("Nicht ins Logbuch: zu wenige GPS-Positionen in der Aufzeichnung."); fbGeprueft(s.id); return null; }
+      const startBekannt = fbStartBekannt(s);
+      const werte = Flugbuch.analysiere(P, { hoeheQuelle: "gps", startT: startBekannt });
+      if (!vonHand && !werte.startErkannt) { log("Logbuch: kein Start erkannt, Aufzeichnung nur unter Debug", "sys"); fbGeprueft(s.id); return null; }
+      const dup = alle.find(f => Flugbuch.istDuplikat(f.werte, werte));
+      if (dup && (!vonHand || !confirm("Derselbe Flug ist schon im Logbuch („" + dup.name + "“). Trotzdem eintragen?"))) {
+        log("Logbuch: gleicher Flug schon eingetragen („" + dup.name + "“)", "sys"); fbGeprueft(s.id); return null;
+      }
+      const flug = { id: s.id, sid: s.id, sessionStart: s.start, startBekannt, quelle: "aufzeichnung", name: Flugbuch.standardName(werte, karteSet.wegpunkte),
+                     schirm: settings.glider || "", erstellt: Date.now(), werte };
+      await fbPut(flug);
+      fbGeprueft(s.id);
+      log("Logbuch: „" + flug.name + "“ eingetragen (" + fbDauer(werte.dauerS) + (werte.xc.bestes ? ", " + werte.xc.bestes.km.toFixed(2) + " km" : "") + ")", "sys");
+      if (activeTab === "logbuch") fbLaden();
+      return flug;
+    } catch (e) { log("Logbuch: Aufzeichnung nicht auswertbar: " + errText(e), "err"); if (vonHand) fbMelden("Fehler: " + fbText(e)); return null; }
+  });
+}
+
+// Start eines automatisch erkannten Flugs: im Flug mit Geländedaten bestimmt (Beginn des Startlaufs), gilt statt der
+// Erkennung ohne Geländedaten (die z. B. beim Soaren auf Starthöhe erst spät anspricht)
+const fbStartBekannt = (s) => s.art === "auto" && Number.isFinite(s.start) ? s.start / 1000 : null;
+
+/* Bisherige Aufzeichnungen einmal übernehmen (mit erkanntem Start, mindestens 3 min) und Flüge mit älterer
+   Auswertung neu rechnen. Läuft im Hintergrund, nie während eines Flugs und nicht, solange am Startplatz verbunden
+   oder auf einen Start gewartet wird (die Auswertung belegt die Anzeige jeweils bis zu einer Sekunde) – ausser das
+   Logbuch ist offen. Sonst später erneut versuchen. */
+const fbBeschaeftigt = () => rec.active || ((startErkennung || connState === "connected") && activeTab !== "logbuch");
+function fbHintergrund() {
+  if (!FB_OK) return;
+  fb.hintergrundOffen = false;
+  fbKette(async () => {
+    const spaeter = () => { fb.hintergrundOffen = true; fbMelden(""); setTimeout(() => { if (fb.hintergrundOffen) fbHintergrund(); }, 60000); };
+    if (fbBeschaeftigt()) { spaeter(); return; }
+    let sessions, alle;
+    try { sessions = await listSessions(); alle = await fbAlle(); } catch (e) { return; }
+    const drin = new Set(alle.map(f => f.sid).filter(Boolean)), geprueft = fbGeprueft();
+    const offen = sessions.filter(s => s.end !== null && s.fixes > 0 && !drin.has(s.id) && !geprueft.has(s.id));
+    let neu = 0;
+    for (const [k, s] of offen.entries()) {
+      if (fbBeschaeftigt()) { spaeter(); return; }
+      fbMelden("Bisherige Aufzeichnungen werden ins Logbuch übernommen (" + (k + 1) + " / " + offen.length + ") …", true);
+      try {
+        const P = Flugbuch.punkteAusApp((await loadSession(s.id)).fixes, s.start);
+        const startBekannt = fbStartBekannt(s);
+        const werte = P.length >= 10 ? Flugbuch.analysiere(P, { hoeheQuelle: "gps", startT: startBekannt }) : null;
+        if (werte && werte.startErkannt && werte.dauerS >= FB_UEBERNAHME_MIN_S && !alle.some(f => Flugbuch.istDuplikat(f.werte, werte))) {
+          const flug = { id: s.id, sid: s.id, sessionStart: s.start, startBekannt, quelle: "aufzeichnung", name: Flugbuch.standardName(werte, karteSet.wegpunkte),
+                         schirm: "", erstellt: Date.now(), werte };
+          await fbPut(flug); alle.push(flug); neu++;
+        }
+      } catch (e) { log("Logbuch: Aufzeichnung vom " + new Date(s.start).toLocaleString("de-CH") + " nicht auswertbar: " + errText(e), "err"); }
+      fbGeprueft(s.id);
+      await fbPause();
+    }
+    // ältere Auswertungen neu rechnen (Name und Quelle bleiben)
+    const alt = alle.filter(f => !f.werte || f.werte.version !== Flugbuch.ANALYSE_VERSION);
+    for (const [k, f] of alt.entries()) {
+      if (fbBeschaeftigt()) { spaeter(); return; }
+      fbMelden("Logbuch wird neu berechnet (" + (k + 1) + " / " + alt.length + ") …", true);
+      try { f.werte = Flugbuch.analysiere(await fbPunkte(f), { hoeheQuelle: f.werte && f.werte.hoeheQuelle, startT: f.startBekannt }); await fbPut(f); }
+      catch (e) { log("Logbuch: „" + f.name + "“ nicht neu berechnet: " + errText(e), "err"); }
+      await fbPause();
+    }
+    fbMelden(neu ? neu + (neu === 1 ? " bisherige Aufzeichnung" : " bisherige Aufzeichnungen") + " ins Logbuch übernommen." : "");
+    if (activeTab === "logbuch") fbLaden();
+  });
+}
+
+/* Dateien ins Logbuch: IGC-Dateien (lesen, auswerten, Duplikate überspringen, Originaldatei speichern),
+   Sicherungen (ZIP mit logbuch.json, siehe unten) und andere ZIP-Dateien mit IGC-Dateien darin */
+function fbImport(dateien) {
+  if (!FB_OK) { fbMelden("Logbuch nicht verfügbar (Skripte nicht geladen)."); return; }
+  const liste = [...dateien];
+  if (!liste.length) return;
+  fbKette(async () => {
+    const alle = await fbAlle();
+    const ergebnis = { neu: [], doppelt: [], fehler: [], abgebrochen: false, sicherung: false };
+    for (const [k, d] of liste.entries()) {
+      fbMelden("Lese " + (k + 1) + " / " + liste.length + ": " + d.name + " …", true);
+      try {
+        const kopf = new Uint8Array(await d.slice(0, 4).arrayBuffer());
+        if (FB_ZIP_OK && Zip.istZip(kopf)) await fbZipEinlesen(d, alle, ergebnis);
+        else {
+          if (d.size > 20e6) throw new Error("Datei zu gross");
+          await fbIgcEinlesen(String(d.name), await d.text(), alle, ergebnis);
+        }
+      } catch (e) { ergebnis.fehler.push(d.name + ": " + fbText(e)); }
+      await fbPause();
+    }
+    const teile = [], n = ergebnis.neu.length;
+    if (n) teile.push(n + (n === 1 ? " Flug" : " Flüge") + (ergebnis.sicherung ? " aus der Sicherung übernommen" : " importiert"));
+    if (ergebnis.doppelt.length) teile.push("schon im Logbuch: " + ergebnis.doppelt.join(", "));
+    if (ergebnis.fehler.length) teile.push("nicht lesbar: " + ergebnis.fehler.join("; "));
+    if (ergebnis.abgebrochen && !teile.length) teile.push("Zurückladen abgebrochen.");
+    fbMelden(teile.join(" · ") || "Nichts importiert.");
+    log("Logbuch-Import: " + (teile.join(" · ") || "nichts"), ergebnis.fehler.length ? "err" : "sys");
+    fbLaden();
+  });
+}
+async function fbIgcEinlesen(dateiName, text, alle, ergebnis) {
+  const r = Flugbuch.punkteAusIgc(text);
+  const werte = Flugbuch.analysiere(r.punkte, { hoeheQuelle: r.hoeheQuelle });
+  const dup = alle.find(f => Flugbuch.istDuplikat(f.werte, werte));
+  if (dup) { ergebnis.doppelt.push(dateiName + " (= „" + dup.name + "“)"); return; }
+  let id = "i" + Date.now();
+  while (alle.some(f => f.id === id)) id = "i" + (Date.now() + Math.floor(Math.random() * 1e6));
+  const flug = { id, sid: null, quelle: "igc", dateiName: dateiName.slice(0, 120), name: Flugbuch.standardName(werte, karteSet.wegpunkte),
+                 schirm: (r.kopf.schirm || "").slice(0, 60), erstellt: Date.now(), werte };
+  await fbPut(flug, text);
+  alle.push(flug); ergebnis.neu.push(flug);
+}
+$("lbDatei").addEventListener("change", (e) => { const f = e.target.files; fbImport(f || []); e.target.value = ""; });
+
+/* ---------- Sicherung: alle Flüge in eine ZIP-Datei (Aufbau in flugbuch.js) und wieder zurück ----------
+   Zwei Schritte: zuerst die Datei erstellen (dauert), dann mit einem zweiten Tippen weitergeben – das Teilen-Menü von
+   iOS öffnet sich nur direkt nach einem Tippen. Zurückladen ergänzt nur: vorhandene Flüge bleiben, gleiche werden
+   übersprungen, nichts wird überschrieben. Aufgezeichnete Flüge kommen samt GPS-Fixes zurück (ohne NMEA-Rohzeilen). */
+const FB_ZIP_OK = typeof Zip !== "undefined";
+const FB_SICH_KEY = "flugapp.logbuch.sicherung";    // {zeit (ms, weitergegeben), stand (ms, Datei erstellt), anzahl, bytes}
+function fbSicherungInfo() { try { const s = JSON.parse(lsGet(FB_SICH_KEY) || "null"); return s && Number.isFinite(s.stand) ? s : null; } catch (e) { return null; } }
+// Flüge, die nach dem Erstellen der letzten Sicherung dazugekommen sind oder umbenannt wurden
+function fbUngesichert(liste) {
+  const s = fbSicherungInfo(), stand = s ? s.stand : 0;
+  return (liste || []).filter(f => Math.max(f.erstellt || 0, f.geaendert || 0) > stand).length;
+}
+async function fbIgcText(id) {
+  const db = await idb();
+  const text = await reqP(db.transaction("igc").objectStore("igc").get(id));
+  if (typeof text !== "string") throw new Error("IGC-Datei nicht mehr gespeichert");
+  return text;
+}
+// Dauerhafter Speicher: darf der Browser die Daten bei Speichermangel löschen? (iOS: meist nicht zuzusichern)
+async function fbSpeicherPruefen() {
+  const st = navigator.storage, sp = { dauerhaft: null, mb: null };
+  try { if (st && st.persisted) sp.dauerhaft = await st.persisted(); } catch (e) { /* unbekannt */ }
+  try { if (st && st.estimate) { const e = await st.estimate(); if (e && e.usage) sp.mb = e.usage / 1e6; } } catch (e) { /* unbekannt */ }
+  fb.speicher = sp;
+  fbSicherungZeichnen();
+}
+function fbSpeicherAnfragen() {   // direkt aus einem Tippen aufrufen (Firefox fragt nach, Safari/Chrome entscheiden selbst)
+  let p = Promise.resolve();
+  try { if (navigator.storage && navigator.storage.persist) p = navigator.storage.persist().catch(() => {}); } catch (e) { /* nicht verfügbar */ }
+  fb.speicherGefragt = true;
+  return p.then(fbSpeicherPruefen);
+}
+
+function fbSicherungErstellen() {
+  if (!FB_OK || !FB_ZIP_OK) { fbMelden("Sicherung nicht verfügbar (Skripte nicht geladen)."); return; }
+  if (fb.sicherungLaeuft) return;
+  fb.sicherungLaeuft = true; fb.sicherung = null; fbSicherungZeichnen();
+  fbSpeicherAnfragen();
+  fbKette(async () => {
+    try {
+      const stand = Date.now();
+      const alle = (await fbAlle()).filter(f => f.werte).sort((a, b) => a.werte.startT - b.werte.startT);
+      // Flug für Flug packen: unkomprimiert liegt immer nur ein Flug im Speicher
+      const zip = Zip.packer(), eintraege = [], fehler = [], vergeben = new Set();
+      let roh = 0;
+      const dazu = async (name, daten, zeit) => { roh += (await zip.hinzu({ name, daten, zeit })).groesse; };
+      for (const [k, f] of alle.entries()) {
+        fbMelden("Sicherung: Flug " + (k + 1) + " / " + alle.length + " …", true);
+        try {
+          const basis = Flugbuch.sicherungsName(f, vergeben), zeit = f.werte.startT * 1000;
+          const e = { flug: f, igc: "IGC/" + basis + ".igc", daten: null };
+          if (f.quelle === "igc") await dazu(e.igc, await fbIgcText(f.id), zeit);
+          else {
+            const s = await fbSession(f.sid);
+            if (!s) throw new Error("Aufzeichnung nicht mehr vorhanden");
+            const fixes = (await loadSession(f.sid)).fixes;
+            const r = Core.buildIgc(fixes, { fallbackDate: Core.ddmmyyUTC(s.start), pilot: settings.pilot, glider: f.schirm || settings.glider, version: APP_VERSION });
+            if (r.bCount) await dazu(e.igc, r.text, zeit); else e.igc = null;
+            e.daten = "daten/" + f.sid + ".json";
+            await dazu(e.daten, JSON.stringify({ session: s, fixes }), zeit);
+          }
+          eintraege.push(e);
+        } catch (x) { fehler.push("„" + f.name + "“: " + fbText(x)); }
+        await fbPause();
+      }
+      await dazu("logbuch.json", JSON.stringify(Flugbuch.sicherungVerzeichnis(eintraege, APP_VERSION, stand), null, 1), stand);
+      const blob = new Blob(zip.ende(), { type: "application/zip" });
+      const d = new Date(stand), p = (n) => String(n).padStart(2, "0");
+      fb.sicherung = { blob, bytes: blob.size, anzahl: eintraege.length, stand,
+                       name: "logbuch-" + d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + "-" + p(d.getHours()) + p(d.getMinutes()) + ".zip" };
+      fbMelden(fehler.length ? "Nicht in der Sicherung: " + fehler.join("; ") : "");
+      log("Logbuch-Sicherung erstellt: " + eintraege.length + " Flüge, " + fbMb(blob.size) + " (entpackt " + fbMb(roh) + ")"
+          + (fehler.length ? "; fehlt: " + fehler.join("; ") : ""), fehler.length ? "err" : "sys");
+    } catch (e) { fbMelden("Sicherung fehlgeschlagen: " + fbText(e)); log("Logbuch-Sicherung: " + errText(e), "err"); }
+    finally { fb.sicherungLaeuft = false; fbSicherungZeichnen(); }
+  });
+}
+async function fbSicherungWeitergeben() {
+  const s = fb.sicherung;
+  if (!s) return;
+  const r = await deliverFile(s.name, s.blob, "application/zip");
+  if (r === "abgebrochen") return;
+  // Beim Download sieht die App nicht, ob die Datei ankam (iOS-Browser ignorieren ihn teils still): nachfragen
+  if (r === "download" && !confirm("Ist die Datei „" + s.name + "“ angekommen (z. B. im Download-Ordner)? Erst dann gilt das Logbuch als gesichert.")) {
+    fbMelden("Nicht als gesichert vermerkt. „Speichern …“ nochmals versuchen.");
+    return;
+  }
+  lsSet(FB_SICH_KEY, JSON.stringify({ zeit: Date.now(), stand: s.stand, anzahl: s.anzahl, bytes: s.bytes }));
+  fb.sicherung = null;
+  fbMelden(r === "geteilt" ? "Sicherung weitergegeben (" + s.anzahl + (s.anzahl === 1 ? " Flug" : " Flüge") + ", " + fbMb(s.bytes) + ")."
+                           : "Sicherung heruntergeladen: " + s.name);
+  fbListeZeichnen(); fbSicherungZeichnen();
+}
+
+// Eine ZIP-Datei lesen: Sicherung dieser App (logbuch.json) zurückladen, sonst die IGC-Dateien darin importieren
+async function fbZipEinlesen(d, alle, ergebnis) {
+  if (d.size > 1e9) throw new Error("Datei zu gross");
+  const dec = new TextDecoder("utf-8");
+  const zip = Zip.oeffnen(new Uint8Array(await d.arrayBuffer()));   // entpackt wird erst beim Lesen, Datei für Datei
+  const text = async (name) => {
+    if (!zip.hat(name)) throw new Error(name + " fehlt in der Sicherung");
+    const e = await zip.lies(name, { maxGroesse: 200e6 });
+    if (e.fehler) throw new Error(name + ": " + e.fehler);
+    return dec.decode(e.daten);
+  };
+  if (!zip.hat("logbuch.json")) {
+    const igc = zip.namen.filter(n => /\.igc$/i.test(n) && !/(^|\/)(__MACOSX\/|\._)/.test(n));
+    if (!igc.length) throw new Error("weder eine Logbuch-Sicherung noch IGC-Dateien");
+    for (const name of igc) {
+      const n = name.split("/").pop();
+      fbMelden("Importiere " + n + " …", true);
+      try { await fbIgcEinlesen(n, await text(name), alle, ergebnis); }
+      catch (x) { ergebnis.fehler.push(n + ": " + fbText(x)); }
+      await fbPause();
+    }
+    return;
+  }
+  const s = Flugbuch.sicherungLesen(await text("logbuch.json"));
+  ergebnis.sicherung = true;
+  const schonDa = (fl) => alle.find(f => f.id === fl.id || Flugbuch.istDuplikat(f.werte, fl.werte));
+  const neu = s.eintraege.filter(e => !schonDa(e.flug)), da = s.eintraege.length - neu.length;
+  const vom = s.erstellt ? " vom " + new Date(s.erstellt).toLocaleString("de-CH", { dateStyle: "medium", timeStyle: "short" }) : "";
+  if (da) ergebnis.doppelt.push(da + (da === 1 ? " Flug" : " Flüge") + " der Sicherung");
+  for (const n of s.fehler) ergebnis.fehler.push("„" + n + "“: Eintrag unvollständig");
+  if (!neu.length) return;
+  if (!confirm("Sicherung" + vom + " mit " + s.eintraege.length + (s.eintraege.length === 1 ? " Flug" : " Flügen") + ": "
+               + (neu.length === 1 ? "1 Flug" : neu.length + " Flüge") + " ins Logbuch übernehmen" + (da ? " (" + da + " " + (da === 1 ? "ist" : "sind") + " schon drin)" : "")
+               + "? Vorhandene Flüge bleiben unverändert.")) { ergebnis.abgebrochen = true; return; }
+  const sessions = new Set((await listSessions()).map(x => x.id));
+  for (const [k, e] of neu.entries()) {
+    fbMelden("Sicherung wird zurückgeladen (" + (k + 1) + " / " + neu.length + ") …", true);
+    const flug = e.flug;
+    try {
+      if (schonDa(flug)) { ergebnis.doppelt.push("„" + flug.name + "“"); continue; }
+      if (flug.quelle === "igc") {
+        const igc = await text(e.igc);
+        Flugbuch.punkteAusIgc(igc);                                  // lesbar?
+        await fbPut(flug, igc);
+      } else {
+        const a = Flugbuch.aufzeichnungLesen(await text(e.daten), flug.sid);
+        if (sessions.has(flug.sid)) await fbPut(flug);              // dieselbe Aufzeichnung ist noch da
+        else await fbAufzeichnungZurueck(flug, a);
+        sessions.add(flug.sid); fbGeprueft(flug.sid);
+      }
+      alle.push(flug); ergebnis.neu.push(flug);
+    } catch (x) { ergebnis.fehler.push("„" + flug.name + "“: " + fbText(x)); }
+    await fbPause();
+  }
+}
+// Aufgezeichneten Flug samt Aufzeichnung (ein Block mit allen Fixes) in einem Schritt speichern
+async function fbAufzeichnungZurueck(flug, a) {
+  const s = Object.assign({}, a.session, { lines: 0, fixes: a.fixes.length, wiederhergestellt: Date.now() });
+  if (!Number.isFinite(s.end)) s.end = Number.isFinite(s.lastT) ? s.lastT : s.start;
+  const db = await idb();
+  const tx = db.transaction(["fluege", "sessions", "chunks"], "readwrite");
+  tx.objectStore("sessions").put(s);
+  tx.objectStore("chunks").add({ sid: s.id, t: s.end, lines: [], fixes: a.fixes });
+  tx.objectStore("fluege").put(flug);
+  await txDone(tx);
+  fb.liste = null;
+}
+$("lbSicherungDatei").addEventListener("change", (e) => { const f = e.target.files; fbSpeicherAnfragen(); fbImport(f || []); e.target.value = ""; });
+
+const fbMb = (b) => (b >= 1e6 ? (b / 1e6).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1e3)) + " kB");
+function fbSicherungZeichnen() {
+  const host = $("lbSicherung");
+  if (!host || !FB_OK) return;
+  const l = fb.liste;
+  if (l === null) return;                                         // erst nach dem Laden
+  const info = fbSicherungInfo(), offen = fbUngesichert(l), sp = fb.speicher || {};
+  const zeile = (k, v, warn) => `<span>${esc(k)}</span><b${warn ? ' class="warn"' : ""}>${esc(v)}</b>`;
+  let html = '<h2>Sicherung</h2><div class="sgroup lbsich"><div class="kv">';
+  if (l.length) {
+    html += zeile("Letzte Sicherung", info ? new Date(info.zeit).toLocaleDateString("de-CH") + ", " + info.anzahl + (info.anzahl === 1 ? " Flug" : " Flüge") : "noch nie", !info);
+    html += zeile("Noch nicht gesichert", offen ? offen + (offen === 1 ? " Flug" : " Flüge") : "keine", offen > 0);
+  }
+  html += zeile("Speicher", sp.dauerhaft === true ? "dauerhaft" : sp.dauerhaft === false ? "nicht dauerhaft" : "unbekannt", sp.dauerhaft === false)
+    + (sp.mb !== null && sp.mb !== undefined ? zeile("Belegt (ganze App)", fbMb(sp.mb * 1e6)) : "") + "</div><div class=\"row\">";
+  if (!FB_ZIP_OK) html += '<div class="lbhinweis">Sicherung nicht verfügbar: zip.js wurde nicht geladen.</div>';
+  else {
+    if (fb.sicherungLaeuft) html += '<button type="button" disabled>Sicherung wird erstellt …</button>';
+    else if (fb.sicherung) html += `<button type="button" id="lbSichGeben">Speichern …</button>`;
+    else if (l.length) html += `<button type="button" id="lbSichErstellen">Alle Flüge sichern</button>`;
+    html += '<label class="knopf" for="lbSicherungDatei">Sicherung laden</label>';
+  }
+  html += "</div>";
+  html += fb.sicherung
+    ? `<div class="lbhinweis">Bereit: ${fb.sicherung.anzahl} ${fb.sicherung.anzahl === 1 ? "Flug" : "Flüge"}, ${esc(fbMb(fb.sicherung.bytes))}. „Speichern“ öffnet das Teilen-Menü – dort z. B. „In Dateien sichern“ (iCloud Drive) wählen.</div>`
+    : `<div class="lbhinweis">Eine ZIP-Datei mit allen Flügen: Namen und Werte, jeder Flug als IGC-Datei und die GPS-Daten der Aufzeichnungen.
+       ${sp.dauerhaft === true ? "" : "Der Browser darf die Daten der App bei Speichermangel löschen – dann ist das Logbuch weg. "}Die Sicherung ausserhalb der App ablegen (Dateien, iCloud, Computer).
+       „Sicherung laden“ ergänzt das Logbuch, vorhandene Flüge bleiben.</div>`;
+  host.innerHTML = html + "</div>";
+  // Hinweis oben in der Liste, solange Flüge nicht gesichert sind
+  const banner = $("lbSichBanner");
+  if (!FB_ZIP_OK || !l.length || (!offen && !fb.sicherung)) banner.innerHTML = "";
+  else banner.innerHTML = `<div class="lbsichbanner"><span>${fb.sicherung ? "Sicherung bereit (" + esc(fbMb(fb.sicherung.bytes)) + ")"
+      : offen === l.length ? (offen === 1 ? "Der Flug ist" : "Die " + offen + " Flüge sind") + " noch nicht gesichert."
+      : offen + (offen === 1 ? " Flug ist" : " Flüge sind") + " noch nicht gesichert."}</span>`
+    + (fb.sicherungLaeuft ? '<button type="button" disabled>Wird erstellt …</button>'
+      : fb.sicherung ? '<button type="button" data-sich="geben">Speichern …</button>' : '<button type="button" data-sich="erstellen">Sichern</button>') + "</div>";
+  host.querySelectorAll("#lbSichErstellen, #lbSichGeben").forEach(b => { b.onclick = b.id === "lbSichGeben" ? fbSicherungWeitergeben : fbSicherungErstellen; });
+  banner.querySelectorAll("button[data-sich]").forEach(b => { b.onclick = b.dataset.sich === "geben" ? fbSicherungWeitergeben : fbSicherungErstellen; });
+}
+
+/* ---------- Formatierung ---------- */
+const fbDatum = (sek) => new Date(sek * 1000).toLocaleDateString("de-CH", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" });
+const fbZeit = (sek, mitSek) => new Date(sek * 1000).toLocaleTimeString("de-CH", mitSek ? { hour: "2-digit", minute: "2-digit", second: "2-digit" } : { hour: "2-digit", minute: "2-digit" });
+const fbDauer = (s) => !(s >= 0) ? "–" : s >= 3600 ? Math.floor(s / 3600) + ":" + String(Math.floor(s % 3600 / 60)).padStart(2, "0") + " h" : Math.round(s / 60) + " min";
+const fbStunden = (s) => Math.floor(s / 3600) + ":" + String(Math.floor(s % 3600 / 60)).padStart(2, "0");
+const fbZahl = (v, dez) => v === null || v === undefined || !Number.isFinite(v) ? "–" : v.toFixed(dez).replace("-", Core.MINUS);
+const fbKachel = (k, v, einheit, s, attr) => `<div class="lbk${attr && attr.weit ? " weit" : ""}"${attr && attr.id !== undefined ? ` data-id="${esc(String(attr.id))}"` : ""}><div class="k">${esc(k)}</div>`
+  + `<div class="v">${esc(v)}${einheit ? `<small>${esc(einheit)}</small>` : ""}</div>${s ? `<div class="s">${esc(s)}</div>` : ""}</div>`;
+
+/* ---------- Liste und Statistik ---------- */
+function fbZeigen() {
+  if (!FB_OK) { $("lbListe").innerHTML = '<div class="lbleer">Logbuch nicht verfügbar: flugbuch.js, xcontest.js oder igc.js wurden nicht geladen (offline ohne Cache?).</div>'; return; }
+  if (fb.liste === null) fbLaden();
+  $("lbMeldung").textContent = fb.meldung;
+  if (fb.hintergrundOffen && !rec.active) fbHintergrund();   // aufgeschobene Übernahme: jetzt, das Logbuch ist offen
+}
+function fbLaden() {
+  if (fb.laedt) return fb.laedt;
+  fb.laedt = (async () => {
+    try {
+      const alle = await fbAlle();
+      fb.liste = alle.filter(f => f.werte).sort((a, b) => b.werte.startT - a.werte.startT);
+    } catch (e) { fb.liste = []; fbMelden("Logbuch nicht lesbar: " + fbText(e)); }
+    fb.laedt = null;
+    fbListeZeichnen(); fbStatistikZeichnen();
+    fbSpeicherPruefen();
+  })();
+  return fb.laedt;
+}
+function fbListeZeichnen() {
+  const host = $("lbListe"), l = fb.liste || [];
+  fbSicherungZeichnen();
+  if (!l.length) {
+    host.innerHTML = '<div class="sgroup"><div class="lbleer">Noch keine Flüge. Nach einer Landung erscheint der Flug hier. Mit „+ IGC“ lassen sich Flüge aus anderen Geräten importieren, mit „Sicherung laden“ (unten) ein gesichertes Logbuch.</div></div>';
+    return;
+  }
+  const st = Flugbuch.statistik(l), jahre = new Map(st.saisons.map(s => [s.jahr, s]));
+  let html = "", jahr = null;
+  for (const f of l) {
+    const j = Flugbuch.saisonVon(f.werte.startT);
+    if (j !== jahr) {
+      if (jahr !== null) html += "</div>";
+      jahr = j;
+      const s = jahre.get(j);
+      html += `<div class="lbjahr"><span>${j}</span><span>${s.anzahl} ${s.anzahl === 1 ? "Flug" : "Flüge"} · ${fbStunden(s.dauerS)} h · ${fbZahl(s.xcKm, 0)} km</span></div><div class="sgroup">`;
+    }
+    const w = f.werte, x = w.xc && w.xc.bestes;
+    html += `<button type="button" class="lbflug" data-id="${esc(String(f.id))}"><span class="l"><span class="n">${esc(f.name)}</span>`
+      + `<span class="d">${esc(fbDatum(w.startT) + " · " + fbZeit(w.startT))}${f.quelle === "igc" ? " · IGC" : ""}</span></span>`
+      + `<span class="r">${esc(fbDauer(w.dauerS))}<small>${x ? esc(x.km.toFixed(1) + " km · " + x.kurz) : "–"}</small></span></button>`;
+  }
+  host.innerHTML = html + "</div>";
+}
+function fbStatistikZeichnen() {
+  const host = $("lbStatistik"), l = fb.liste || [];
+  if (!l.length) { host.innerHTML = '<div class="sgroup"><div class="lbleer">Noch keine Flüge.</div></div>'; return; }
+  const st = Flugbuch.statistik(l);
+  if (fb.statJahr !== "gesamt" && !st.saisons.some(s => String(s.jahr) === fb.statJahr)) fb.statJahr = "gesamt";
+  const s = fb.statJahr === "gesamt" ? st.gesamt : st.saisons.find(x => String(x.jahr) === fb.statJahr);
+  const knopf = (wert, text) => `<button type="button" data-jahr="${wert}"${fb.statJahr === wert ? ' class="on"' : ""}>${esc(text)}</button>`;
+  let html = `<div class="seg" id="lbJahre">${knopf("gesamt", "Gesamt")}${st.saisons.map(x => knopf(String(x.jahr), String(x.jahr))).join("")}</div>`;
+  html += '<div class="lbkacheln">'
+    + fbKachel("Flüge", String(s.anzahl), "", fb.statJahr === "gesamt" ? "seit " + Math.min(...st.saisons.map(x => x.jahr)) : "Saison " + fb.statJahr)
+    + fbKachel("Flugzeit", fbStunden(s.dauerS), "h", "Ø " + fbDauer(s.dauerMittelS) + " pro Flug")
+    + fbKachel("XContest", fbZahl(s.xcKm, 1), "km", "Summe")
+    + fbKachel("XContest-Punkte", fbZahl(s.xcPunkte, 1), "P", "Summe")
+    + fbKachel("Thermiken", String(s.thermiken), "", s.thZeitS ? fbStunden(s.thZeitS) + " h in Thermik" : "")
+    + fbKachel("Ø Steigen in Thermik", fbZahl(s.steigenMittel, 2), "m/s", s.thGewinnM ? fbZahl(s.thGewinnM, 0) + " m gewonnen" : "")
+    + fbKachel("Ø Gleitzahl im Gleiten", fbZahl(s.gzMittel, 1), "", "über Grund")
+    + fbKachel("Höhengewinn kumuliert", fbZahl(s.gewinnKumuliertM, 0), "m", "alle Steigphasen")
+    + "</div><h2>Bestwerte</h2><div class=\"lbkacheln\">";
+  const rek = (titel, r, wert, einheit) => r ? fbKachel(titel, wert, einheit, r.name + " · " + new Date(r.startT * 1000).toLocaleDateString("de-CH"), { id: r.id }) : "";
+  html += rek("Bester XContest-Flug", s.xcBest, s.xcBest ? fbZahl(s.xcBest.wert, 2) : "", "P")
+    + rek("Längster Flug", s.dauerMax, s.dauerMax ? fbDauer(s.dauerMax.wert) : "", "")
+    + rek("Grösste Höhe", s.hMax, s.hMax ? fbZahl(s.hMax.wert, 0) : "", "m")
+    + rek("Höhengewinn über Start", s.gewinnMax, s.gewinnMax ? "+" + fbZahl(s.gewinnMax.wert, 0) : "", "m")
+    + rek("Stärkste Thermik (Ø)", s.steigenBest, s.steigenBest ? fbZahl(s.steigenBest.wert, 1) : "", "m/s")
+    + "</div>";
+  if (fb.statJahr === "gesamt" && st.saisons.length) {
+    html += '<h2>Saisons</h2><div class="card"><table class="lbtab"><tr><th>Jahr</th><th class="z">Flüge</th><th class="z">Zeit</th><th class="z">km</th><th class="z">Punkte</th></tr>'
+      + st.saisons.map(x => `<tr><td>${x.jahr}</td><td class="z">${x.anzahl}</td><td class="z">${fbStunden(x.dauerS)}</td><td class="z">${fbZahl(x.xcKm, 0)}</td><td class="z">${fbZahl(x.xcPunkte, 0)}</td></tr>`).join("")
+      + "</table></div>";
+  }
+  html += '<div class="lbhinweis">Saison = Kalenderjahr. XContest nach den Regeln von XContest World, aus dem eigenen Track gerechnet (nicht eingereicht). '
+    + "Ø Steigen und Ø Gleitzahl sind nach Zeit bzw. Höhenverlust gewichtet über alle Flüge.</div>";
+  host.innerHTML = html;
+}
+$("lbSeg").addEventListener("click", (e) => {
+  const b = e.target.closest && e.target.closest("button[data-lb]");
+  if (!b) return;
+  fb.ansicht = b.dataset.lb;
+  $("lbSeg").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+  $("lbListe").style.display = $("lbSicherung").style.display = $("lbSichBanner").style.display = fb.ansicht === "fluege" ? "" : "none";
+  $("lbStatistik").style.display = fb.ansicht === "statistik" ? "" : "none";
+});
+$("lbListe").addEventListener("click", (e) => { const b = e.target.closest && e.target.closest("[data-id]"); if (b) fbOeffnen(b.dataset.id); });
+$("lbStatistik").addEventListener("click", (e) => {
+  const j = e.target.closest && e.target.closest("[data-jahr]");
+  if (j) { fb.statJahr = j.dataset.jahr; fbStatistikZeichnen(); return; }
+  const k = e.target.closest && e.target.closest("[data-id]");
+  if (k) fbOeffnen(k.dataset.id);
+});
+
+/* ---------- Detail: Karte mit Track, Barogramm mit Zeitmarke, Werte ---------- */
+function fbFinden(id) { return (fb.liste || []).find(f => String(f.id) === String(id)) || null; }
+function fbSeite(detail) {
+  const r = $("lb-root"), d = $("lb-detail");
+  if (detail) {
+    $("lbZurueck").innerHTML = CHEV_LINKS + '<span class="sback-txt">Logbuch</span>';
+    d.style.zIndex = "2"; d.scrollTop = 0;
+    r.classList.remove("cur"); r.classList.add("under"); d.classList.add("cur");
+  } else { d.classList.remove("cur"); r.classList.remove("under"); r.classList.add("cur"); }
+}
+function fbZurueck() {
+  fbAbspielen(false);
+  if (fb.detail) { fb.detail = null; fbSeite(false); }
+}
+$("lbZurueck").addEventListener("click", () => fbZurueck());
+
+async function fbOeffnen(id) {
+  const flug = fbFinden(id);
+  if (!flug) return;
+  fbAbspielen(false);
+  const d = fb.detail = { flug, P: null, routeTyp: flug.werte.xc && flug.werte.xc.bestes ? flug.werte.xc.bestes.typ : null, idx: 0,
+                          karte: { frei: null, sig: "", zeiger: new Map() }, baroSig: "", werteSig: "", fehler: null };
+  $("lbTitel").textContent = flug.name;
+  fbDetailAufbauen();
+  fbSeite(true);
+  try {
+    const P = await fbPunkte(flug);
+    if (fb.detail !== d) return;
+    if (P.length < 2) throw new Error("keine Positionen");
+    d.P = P;
+    d.V = Igc.geschwVektoren(P);
+    d.hg = Flugbuch.glaetten(P, 2);
+    d.vario = new Float64Array(P.length);
+    for (let i = 0; i < P.length; i++) {
+      const a = Flugbuch.indexAb(P, P[i].t - 3), b = Flugbuch.indexAb(P, P[i].t + 3);
+      const j = P[b].t > P[i].t + 3 ? b - 1 : b, dt = P[j].t - P[a].t;
+      d.vario[i] = dt > 0 ? (d.hg[j] - d.hg[a]) / dt : 0;
+    }
+    // Spur fürs Zeichnen ausdünnen; spurIdx = Index in P je Spurpunkt
+    d.spur = []; d.spurIdx = [];
+    for (let i = 0; i < P.length; i++) {
+      const l = d.spur[d.spur.length - 1];
+      if (!l || i === P.length - 1 || Flugbuch.distanz(l, P[i]) >= FB_SPUR_MIN_M) { d.spur.push({ lat: P[i].lat, lon: P[i].lon }); d.spurIdx.push(i); }
+    }
+    d.idx = Flugbuch.indexAb(P, flug.werte.startT);
+    d.imGebiet = KARTE_OK && P.some(p => Karte.imGebiet(p.lat, p.lon));
+  } catch (e) { d.fehler = fbText(e); }
+  if (fb.detail === d) { fbDetailAufbauen(); fbZeichnen(); }
+}
+function fbRoute(d) {
+  const x = d.routeTyp && d.flug.werte.xc.varianten[d.routeTyp];
+  if (!x) return null;
+  if (x.typ === "frei") return { punkte: x.wp, geschlossen: false, schluss: null, marken: ["S", "1", "2", "3", "Z"] };
+  return { punkte: x.wp, geschlossen: true, schluss: x.schluss ? [x.schluss.a, x.schluss.b] : null, marken: ["1", "2", "3"] };
+}
+function fbDetailAufbauen() {
+  const d = fb.detail, f = d.flug, w = f.werte, x = w.xc || { varianten: {} };
+  const host = $("lbDetail");
+  const quelle = f.quelle === "igc" ? "Importiert aus " + (f.dateiName || "IGC-Datei") : "Aufgezeichnet mit dieser App";
+  const hoehe = w.hoeheQuelle === "baro" ? "Druckhöhe (Datei ohne GPS-Höhe)" : "GPS-Höhe";
+  const PLAY = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg>';
+  const FIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+  const typen = ["frei", "flach", "fai", "flachZu", "faiZu"];
+  const best = x.bestes ? x.bestes.typ : null;
+  host.innerHTML = `
+    <div class="lbname"><span class="nm" id="lbName">${esc(f.name)}</span><button type="button" class="secondary" id="lbUmbenennen">Umbenennen</button></div>
+    <div class="lbsub">${esc(fbDatum(w.startT) + " · " + fbZeit(w.startT) + "–" + fbZeit(w.landeT) + (f.schirm ? " · " + f.schirm : ""))}</div>
+    <div class="lbkarte" id="lbKarte"><canvas></canvas><div class="kmsg"></div>
+      <div class="kz"><button type="button" class="zfit" aria-label="Ganzen Flug zeigen">${FIT}</button><button type="button" class="zin" aria-label="Hineinzoomen">+</button><button type="button" class="zout" aria-label="Herauszoomen">−</button></div></div>
+    <div class="lbbaro" id="lbBaro"><canvas></canvas></div>
+    <div class="lbspiel"><button type="button" class="lbplay" id="lbPlay" aria-label="Abspielen">${PLAY}</button><button type="button" class="secondary" id="lbTempo">×${fbTempo()}</button>
+      <div class="lbwerte" id="lbWerte">${d.fehler ? '<span class="bad-t">' + esc("Track nicht lesbar: " + d.fehler) + "</span>" : d.P ? "" : "Track lädt …"}</div></div>
+    <div class="lbkacheln">
+      ${fbKachel("Dauer", fbDauer(w.dauerS), "", w.startErkannt ? "Start " + fbZeit(w.startT) + " · Landung " + (w.landungErkannt ? fbZeit(w.landeT) : "–") : "Start nicht erkannt: ganze Aufzeichnung")}
+      ${fbKachel("Max. Höhe", fbZahl(w.hMax, 0), "m", "um " + fbZeit(w.hMaxT))}
+      ${fbKachel("Höhengewinn über Start", "+" + fbZahl(w.gewinnUeberStart, 0), "m", "Start auf " + fbZahl(w.start.h, 0) + " m")}
+      ${fbKachel("Höhengewinn kumuliert", "+" + fbZahl(w.gewinnKumuliert, 0), "m", "alle Steigphasen")}
+      ${fbKachel("XContest", x.bestes ? x.bestes.km.toFixed(2) : "–", x.bestes ? "km" : "", x.bestes ? x.bestes.name + " · " + x.bestes.punkte.toFixed(2) + " Punkte" : "keine Wertung", { weit: true })}
+      ${fbKachel("Thermiken", String(w.thermiken.anzahl), "", w.thermiken.zeitS ? fbDauer(w.thermiken.zeitS) + " in Thermik" : "ab +" + Flugbuch.THERMIK_MIN_M + " m")}
+      ${fbKachel("Ø Steigen in Thermik", fbZahl(w.thermiken.steigenMittel, 2), "m/s", w.thermiken.gewinnM ? "+" + w.thermiken.gewinnM + " m gesamt" : "")}
+      ${fbKachel("Ø Gleitzahl im Gleiten", fbZahl(w.gleiten.gz, 1), "", w.gleiten.abschnitte ? "über Grund · " + (w.gleiten.distM / 1000).toFixed(1) + " km Gleiten" : "kein Gleitabschnitt")}
+      ${fbKachel("Strecke geflogen", fbZahl(w.streckeM / 1000, 1), "km", "Weg über Grund")}
+    </div>
+    <h2>XContest-Wertung</h2>
+    <div class="card"><table class="lbtab" id="lbXc"><tr><th>Art</th><th class="z">km</th><th class="z">Faktor</th><th class="z">Punkte</th></tr>
+      ${typen.map(t => { const v = x.varianten[t], name = XContest.TYPEN[t].name;
+        return v ? `<tr data-typ="${t}" class="${t === best ? "best" : ""}${t === d.routeTyp ? " an" : ""}"><td>${esc(name)}</td><td class="z">${v.km.toFixed(2)}</td><td class="z">${v.faktor.toFixed(1)}</td><td class="z">${v.punkte.toFixed(2)}</td></tr>`
+                 : `<tr><td class="hint">${esc(name)}</td><td class="z hint" colspan="3">nicht möglich</td></tr>`; }).join("")}
+    </table></div>
+    <div class="lbhinweis">Antippen einer Zeile zeigt die Wendepunkte auf der Karte. Eigene Rechnung nach den Regeln von XContest World, nicht eingereicht.</div>
+    <div class="row"><button type="button" class="secondary" id="lbIgc">IGC exportieren</button><button type="button" class="danger" id="lbLoeschen">Löschen</button></div>
+    <div class="lbhinweis">${esc(quelle + " · " + hoehe + " · " + (w.punkteAnzahl || 0) + " Punkte im Flug")}. Thermik ab +${Flugbuch.THERMIK_MIN_M} m Höhengewinn in einer Kreisphase. Gleitzahl über Grund (mit Wind) in den Abschnitten zwischen den Kreisphasen.</div>`;
+  $("lbUmbenennen").onclick = fbUmbenennenStart;
+  $("lbIgc").onclick = () => fbExport(f);
+  $("lbLoeschen").onclick = () => fbLoeschenFragen(f);
+  $("lbPlay").onclick = () => fbAbspielen(!d.spielt);
+  $("lbTempo").onclick = () => { fb.tempoI = ((fb.tempoI || 1) + 1) % FB_TEMPI.length; $("lbTempo").textContent = "×" + fbTempo(); };
+  $("lbXc").onclick = (e) => {
+    const tr = e.target.closest && e.target.closest("tr[data-typ]");
+    if (!tr) return;
+    d.routeTyp = d.routeTyp === tr.dataset.typ ? null : tr.dataset.typ;
+    $("lbXc").querySelectorAll("tr[data-typ]").forEach(r => r.classList.toggle("an", r.dataset.typ === d.routeTyp));
+    d.karte.sig = ""; fbZeichnen();
+  };
+  fbKarteBedienung(d);
+  fbBaroBedienung(d);
+}
+const fbTempo = () => FB_TEMPI[fb.tempoI === undefined ? 1 : fb.tempoI];
+
+function fbUmbenennenStart() {
+  const d = fb.detail; if (!d) return;
+  const box = $("lbName").parentElement;
+  box.innerHTML = `<input id="lbNameIn" maxlength="60" autocomplete="off" enterkeyhint="done"><button type="button" id="lbNameOk">Sichern</button>`;
+  const inp = $("lbNameIn"); inp.value = d.flug.name; inp.focus(); inp.select();
+  const fertig = async (sichern) => {
+    const neu = inp.value.trim().slice(0, 60);
+    if (sichern && neu && neu !== d.flug.name) {
+      d.flug.name = neu; d.flug.geaendert = Date.now();
+      try { await fbPut(d.flug); } catch (e) { fbMelden("Umbenennen fehlgeschlagen: " + fbText(e)); }
+      $("lbTitel").textContent = neu;
+      fbLaden();
+    }
+    box.innerHTML = `<span class="nm" id="lbName">${esc(d.flug.name)}</span><button type="button" class="secondary" id="lbUmbenennen">Umbenennen</button>`;
+    $("lbUmbenennen").onclick = fbUmbenennenStart;
+  };
+  $("lbNameOk").onclick = () => fertig(true);
+  inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); fertig(true); } if (e.key === "Escape") fertig(false); });
+}
+async function fbLoeschenFragen(flug) {
+  const zusatz = flug.quelle === "aufzeichnung" ? " Die Aufzeichnung (Rohdaten) wird ebenfalls gelöscht." : " Die importierte IGC-Datei wird ebenfalls gelöscht.";
+  if (!confirm("Flug „" + flug.name + "“ vom " + fbDatum(flug.werte.startT) + " endgültig löschen?" + zusatz + " Das kann nicht rückgängig gemacht werden.")) return;
+  try {
+    await fbLoeschen(flug);
+    log("Logbuch: „" + flug.name + "“ gelöscht", "sys");
+    fbMelden("„" + flug.name + "“ gelöscht.");
+    fbZurueck(); fbLaden(); refreshSessions();
+  } catch (e) { fbMelden("Löschen fehlgeschlagen: " + fbText(e)); }
+}
+async function fbExport(flug) {
+  try {
+    if (flug.quelle === "igc") {
+      const text = await fbIgcText(flug.id);
+      await deliverFile(/\.igc$/i.test(flug.dateiName || "") ? flug.dateiName : "flug-" + stamp(flug.werte.startT * 1000) + ".igc", text);
+    } else {
+      const s = await fbSession(flug.sid);
+      if (!s) throw new Error("Aufzeichnung nicht mehr vorhanden");
+      await exportSession(s, "igc");
+    }
+  } catch (e) { fbMelden("Export fehlgeschlagen: " + fbText(e)); log("Logbuch-Export: " + errText(e), "err"); }
+}
+
+/* Karte: verschieben (ein Finger), zoomen (zwei Finger, Knöpfe), Antippen setzt die Zeitmarke auf den nächsten Trackpunkt */
+const FB_ZMIN = 6, FB_ZMAX = 15;
+function fbAnsicht(k, W, H) { const c = Karte.zuWelt(k.frei.lat, k.frei.lon, k.frei.z); return { z: k.frei.z, cx: c.x, cy: c.y, ax: W / 2, ay: H / 2, rot: 0 }; }
+function fbKarteZoom(k, dz, px, py) {
+  const cv = $("lbKarte").querySelector("canvas"), W = cv.clientWidth, H = cv.clientHeight;
+  const nz = Math.max(FB_ZMIN, Math.min(FB_ZMAX, k.frei.z + dz));
+  if (nz === k.frei.z) return;
+  const v = fbAnsicht(k, W, H), w = Karte.bildZuWelt(v, px, py), p = Karte.ausWelt(w.x, w.y, k.frei.z);
+  k.frei.z = nz;
+  const v2 = fbAnsicht(k, W, H), soll = Karte.zuWelt(p.lat, p.lon, nz), ist = Karte.bildZuWelt(v2, px, py);
+  const m = Karte.ausWelt(v2.cx + soll.x - ist.x, v2.cy + soll.y - ist.y, nz);
+  k.frei.lat = m.lat; k.frei.lon = m.lon;
+}
+function fbKarteSchieben(k, vonX, vonY, nachX, nachY) {
+  const cv = $("lbKarte").querySelector("canvas"), v = fbAnsicht(k, cv.clientWidth, cv.clientHeight);
+  const a = Karte.bildZuWelt(v, vonX, vonY), b = Karte.bildZuWelt(v, nachX, nachY), m = Karte.ausWelt(v.cx + a.x - b.x, v.cy + a.y - b.y, k.frei.z);
+  k.frei.lat = m.lat; k.frei.lon = m.lon;
+}
+function fbKarteBedienung(d) {
+  const box = $("lbKarte"), cv = box.querySelector("canvas"), k = d.karte;
+  k.cv = cv; k.ctx = cv.getContext("2d"); k.msg = box.querySelector(".kmsg"); k.sig = ""; k.zeiger = new Map();
+  const zentrum = () => ({ x: cv.clientWidth / 2, y: cv.clientHeight / 2 });
+  box.querySelector(".zin").onclick = () => { if (k.frei) { const c = zentrum(); fbKarteZoom(k, +1, c.x, c.y); fbZeichnen(); } };
+  box.querySelector(".zout").onclick = () => { if (k.frei) { const c = zentrum(); fbKarteZoom(k, -1, c.x, c.y); fbZeichnen(); } };
+  box.querySelector(".zfit").onclick = () => { k.frei = null; fbZeichnen(); };
+  if (!KARTE_OK) return;
+  let zieht = false, pinchD = 0, start = null;
+  const lokal = (e) => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  const zwei = () => { const [a, b] = [...k.zeiger.values()]; return { mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2, d: Math.hypot(a.x - b.x, a.y - b.y) }; };
+  cv.addEventListener("pointerdown", (e) => {
+    try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+    const p = lokal(e); k.zeiger.set(e.pointerId, p);
+    if (k.zeiger.size === 1) { zieht = false; start = p; } else { zieht = true; pinchD = zwei().d; }
+  });
+  cv.addEventListener("pointermove", (e) => {
+    const alt = k.zeiger.get(e.pointerId);
+    if (!alt || !k.frei) return;
+    const neu = lokal(e);
+    if (k.zeiger.size === 1) {
+      if (!zieht && Math.hypot(neu.x - start.x, neu.y - start.y) <= 8) return;
+      zieht = true; k.zeiger.set(e.pointerId, neu);
+      fbKarteSchieben(k, alt.x, alt.y, neu.x, neu.y);
+    } else {
+      const vor = zwei(); k.zeiger.set(e.pointerId, neu); const nach = zwei();
+      fbKarteSchieben(k, vor.mx, vor.my, nach.mx, nach.my);
+      if (pinchD > 0 && nach.d / pinchD >= Math.SQRT2) { fbKarteZoom(k, +1, nach.mx, nach.my); pinchD = nach.d; }
+      else if (pinchD > 0 && nach.d / pinchD <= Math.SQRT1_2) { fbKarteZoom(k, -1, nach.mx, nach.my); pinchD = nach.d; }
+    }
+    fbZeichnen();
+  });
+  const los = (e) => {
+    const war = k.zeiger.get(e.pointerId);
+    k.zeiger.delete(e.pointerId);
+    if (k.zeiger.size === 2) pinchD = zwei().d;
+    if (e.type === "pointerup" && !zieht && war && !k.zeiger.size && d.spur && k.frei) {   // Antippen: nächster Trackpunkt (bis 40 px)
+      const v = fbAnsicht(k, cv.clientWidth, cv.clientHeight);
+      let best = -1, bd = 40 * 40;
+      for (let i = 0; i < d.spur.length; i++) {
+        const w = Karte.zuWelt(d.spur[i].lat, d.spur[i].lon, v.z), b = Karte.weltZuBild(v, w.x, w.y), q = (b.x - war.x) ** 2 + (b.y - war.y) ** 2;
+        if (q < bd) { bd = q; best = i; }
+      }
+      if (best >= 0) { fbAbspielen(false); d.idx = d.spurIdx[best]; fbZeichnen(); }
+    }
+  };
+  for (const n of ["pointerup", "pointercancel"]) cv.addEventListener(n, los);
+  cv.addEventListener("contextmenu", (e) => e.preventDefault());
+}
+// Barogramm: Ziehen oder Antippen setzt die Zeitmarke
+const FB_BARO_RAND = { l: 6, r: 6, o: 16, u: 16 };
+function fbBaroBedienung(d) {
+  const cv = $("lbBaro").querySelector("canvas");
+  d.baroCv = cv; d.baroSig = "";
+  const setzen = (e) => {
+    if (!d.P) return;
+    const r = cv.getBoundingClientRect(), R = FB_BARO_RAND, x = Math.max(0, Math.min(1, (e.clientX - r.left - R.l) / Math.max(1, r.width - R.l - R.r)));
+    const t0 = d.P[0].t, t1 = d.P[d.P.length - 1].t;
+    d.idx = Flugbuch.indexAb(d.P, t0 + x * (t1 - t0));
+    fbZeichnen();
+  };
+  let aktiv = false;
+  cv.addEventListener("pointerdown", (e) => { try { cv.setPointerCapture(e.pointerId); } catch (err) {} aktiv = true; fbAbspielen(false); setzen(e); });
+  cv.addEventListener("pointermove", (e) => { if (aktiv) setzen(e); });
+  for (const n of ["pointerup", "pointercancel"]) cv.addEventListener(n, () => { aktiv = false; });
+}
+
+function fbFarbe(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || "#888"; }
+function fbZeichnen() {
+  const d = fb.detail;
+  if (!d || activeTab !== "logbuch") return;
+  fbKarteZeichnen(d); fbBaroZeichnen(d); fbWerteZeigen(d);
+}
+function fbRender() {
+  if (fb.meldung && performance.now() > fb.meldungT) fbMelden("");
+  if (fb.detail) fbZeichnen();
+}
+function fbKarteZeichnen(d) {
+  const k = d.karte;
+  if (!d.P || !k.cv || !KARTE_OK) { if (k.msg && !KARTE_OK) { k.msg.textContent = "Karte nicht geladen"; k.msg.className = "kmsg an"; } return; }
+  const W = k.cv.clientWidth, H = k.cv.clientHeight;
+  if (!W || !H) return;
+  const dpr = Math.min(3, window.devicePixelRatio || 1);
+  if (k.cv.width !== Math.round(W * dpr) || k.cv.height !== Math.round(H * dpr)) { k.cv.width = Math.round(W * dpr); k.cv.height = Math.round(H * dpr); k.sig = ""; }
+  if (!k.frei) { const a = Karte.passendeAnsicht(d.spur, W, H, FB_ZMIN, FB_ZMAX, 30); k.frei = { lat: a.lat, lon: a.lon, z: a.z }; }
+  const dunkel = document.documentElement.getAttribute("data-theme") === "dark";
+  const i = d.idx, sig = [W, H, dpr, k.frei.lat, k.frei.lon, k.frei.z, i, kk.version, dunkel, d.routeTyp].join("|");
+  if (sig === k.sig) return;
+  k.sig = sig;
+  const p = d.P[i], v = d.V[i];
+  let bis = 0;
+  { let lo = 0, hi = d.spurIdx.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (d.spurIdx[m] <= i) lo = m; else hi = m - 1; } bis = lo; }
+  Karte.zeichne(k.ctx, {
+    ebene: "topo", z: k.frei.z, breite: W, hoehe: H, dpr, pos: { lat: p.lat, lon: p.lon },
+    kurs: v.geschw !== null && v.geschw * 3.6 >= PFEIL_MIN_KMH ? v.kurs : null, kartenKurs: null, ausrichtung: "nord", kachel: kartenKachel,
+    spur: d.spur, spurOhnePos: true, spurBis: bis, route: fbRoute(d),
+    thermiken: d.flug.werte.thermiken.liste.map(t => ({ lat: t.lat, lon: t.lon, text: "" })), ziel: null,
+    farben: KARTE_FARBEN[dunkel ? "dunkel" : "hell"], dunkel, frei: { lat: k.frei.lat, lon: k.frei.lon, rot: 0, ax: W / 2, ay: H / 2 },
+  });
+  const msg = !d.imGebiet ? "ausserhalb der Schweiz: ohne Karte" : "";
+  if (k.msg.textContent !== msg) { k.msg.textContent = msg; k.msg.className = "kmsg" + (msg ? " an" : ""); }
+}
+function fbBaroZeichnen(d) {
+  const cv = d.baroCv;
+  if (!d.P || !cv) return;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  if (!W || !H) return;
+  const dpr = Math.min(3, window.devicePixelRatio || 1);
+  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); d.baroSig = ""; }
+  const thema = document.documentElement.getAttribute("data-theme"), sig = [W, H, dpr, d.idx, thema].join("|");
+  if (sig === d.baroSig) return;
+  d.baroSig = sig;
+  const ctx = cv.getContext("2d"), P = d.P, n = P.length, R = FB_BARO_RAND, w = d.flug.werte;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+  let hMin = Infinity, hMax = -Infinity;
+  for (let i = 0; i < n; i++) { if (d.hg[i] < hMin) hMin = d.hg[i]; if (d.hg[i] > hMax) hMax = d.hg[i]; }
+  if (hMax - hMin < 50) { hMax += 25; hMin -= 25; }
+  const t0 = P[0].t, t1 = Math.max(P[n - 1].t, t0 + 1);
+  const X = (t) => R.l + (t - t0) / (t1 - t0) * (W - R.l - R.r), Y = (h) => H - R.u - (h - hMin) / (hMax - hMin) * (H - R.o - R.u);
+  // ausserhalb des Flugs (vor dem Start, nach der Landung) grau
+  ctx.fillStyle = "rgba(128,128,128,0.16)";
+  if (w.startT > t0) ctx.fillRect(R.l, 0, X(w.startT) - R.l, H);
+  if (w.landeT < t1) ctx.fillRect(X(w.landeT), 0, W - R.r - X(w.landeT), H);
+  // Thermiken
+  ctx.fillStyle = "rgba(249,115,22,0.22)";
+  for (const t of w.thermiken.liste) ctx.fillRect(X(t.von), R.o, Math.max(1, X(t.bis) - X(t.von)), H - R.o - R.u);
+  // Höhenprofil (jeder Bildpunkt höchstens einmal)
+  const farbe = fbFarbe("--c-alt");
+  ctx.beginPath(); ctx.moveTo(X(P[0].t), H - R.u);
+  const schritt = Math.max(1, Math.floor(n / (W * 2)));
+  for (let i = 0; i < n; i += schritt) ctx.lineTo(X(P[i].t), Y(d.hg[i]));
+  ctx.lineTo(X(P[n - 1].t), Y(d.hg[n - 1])); ctx.lineTo(X(P[n - 1].t), H - R.u); ctx.closePath();
+  ctx.globalAlpha = 0.22; ctx.fillStyle = farbe; ctx.fill(); ctx.globalAlpha = 1;
+  ctx.beginPath();
+  for (let i = 0; i < n; i += schritt) i ? ctx.lineTo(X(P[i].t), Y(d.hg[i])) : ctx.moveTo(X(P[i].t), Y(d.hg[i]));
+  ctx.strokeStyle = farbe; ctx.lineWidth = 1.8; ctx.lineJoin = "round"; ctx.stroke();
+  // Beschriftung
+  ctx.fillStyle = fbFarbe("--dim"); ctx.font = "600 11px -apple-system, sans-serif"; ctx.textBaseline = "alphabetic";
+  ctx.fillText(Math.round(hMax) + " m", R.l + 2, 12);
+  ctx.fillText(Math.round(hMin) + " m", R.l + 2, H - 4);
+  ctx.textAlign = "right"; ctx.fillText(fbZeit(t0) + "–" + fbZeit(t1), W - R.r, 12); ctx.textAlign = "start";
+  // Zeitmarke
+  const xm = X(P[d.idx].t), ym = Y(d.hg[d.idx]);
+  ctx.strokeStyle = fbFarbe("--text"); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(xm, R.o - 4); ctx.lineTo(xm, H - R.u + 4); ctx.stroke();
+  ctx.beginPath(); ctx.arc(xm, ym, 4.5, 0, 2 * Math.PI); ctx.fillStyle = "#ffd600"; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = "#000"; ctx.stroke();
+}
+function fbWerteZeigen(d) {
+  const el = $("lbWerte");
+  if (!el || !d.P) return;
+  const i = d.idx, p = d.P[i], v = d.V[i];
+  const g = terrainAt(p.lat, p.lon, true);
+  const agl = g.h !== null ? Math.round(d.hg[i] - g.h) + " m" : "–";
+  const vz = Core.fmtSigned(d.vario[i], 1);
+  const th = d.flug.werte.thermiken.liste.find(t => p.t >= t.von && p.t <= t.bis);
+  const text = `<div>${esc(fbZeit(p.t, true))} · ${Math.round(d.hg[i])} m · ${esc(vz ? vz.text : "–")} m/s</div>`
+    + `<div class="w2">${v.geschw !== null ? Math.round(v.geschw * 3.6) : "–"} km/h · über Grund ${esc(agl)}${th ? " · Thermik +" + th.gewinnM + " m" : ""}</div>`;
+  if (text !== d.werteSig) { d.werteSig = text; el.innerHTML = text; }
+}
+
+/* Abspielen: die Zeitmarke läuft mit fbTempo() × Echtzeit; am Ende stehen bleiben */
+function fbAbspielen(an) {
+  const d = fb.detail;
+  if (!d) return;
+  const knopf = $("lbPlay");
+  const PLAY = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg>';
+  const PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4.5" width="4.2" height="15" rx="1"/><rect x="13.8" y="4.5" width="4.2" height="15" rx="1"/></svg>';
+  if (!an || !d.P) {
+    d.spielt = false;
+    if (knopf) { knopf.innerHTML = PLAY; knopf.setAttribute("aria-label", "Abspielen"); }
+    return;
+  }
+  if (d.idx >= d.P.length - 1) d.idx = 0;
+  d.spielt = true; d.spielT = d.P[d.idx].t;
+  if (knopf) { knopf.innerHTML = PAUSE; knopf.setAttribute("aria-label", "Anhalten"); }
+  let letzt = performance.now();
+  const schritt = (jetzt) => {
+    if (!d.spielt || fb.detail !== d || activeTab !== "logbuch") { if (fb.detail === d) fbAbspielen(false); return; }
+    d.spielT += (jetzt - letzt) / 1000 * fbTempo(); letzt = jetzt;
+    const ende = d.P[d.P.length - 1].t;
+    if (d.spielT >= ende) { d.idx = d.P.length - 1; fbZeichnen(); fbAbspielen(false); return; }
+    d.idx = Flugbuch.indexAb(d.P, d.spielT);
+    fbZeichnen();
+    requestAnimationFrame(schritt);
+  };
+  requestAnimationFrame(schritt);
+}
+
+/* =====================================================================
    OFFLINE (Service Worker)
    ===================================================================== */
 let swState = "wird geprüft …";
@@ -3405,6 +4388,7 @@ buildWindSettingsUI();
 buildSlSettingsUI();
 showTab(activeTab);
 detectInterrupted();
+setTimeout(fbHintergrund, 2500);   // Logbuch: bisherige Aufzeichnungen übernehmen, ältere Auswertungen neu rechnen
 checkOffline();
 terrainInit();
 kartenInit();
